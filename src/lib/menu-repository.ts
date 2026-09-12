@@ -6,6 +6,7 @@ import pastaImg from "@/assets/cat-pasta.jpg";
 import pizzaImg from "@/assets/cat-pizza.jpg";
 import shawarmaImg from "@/assets/cat-shawarma.jpg";
 import { paymentMethods, promoBanners, restaurant } from "@/data/restaurant";
+import { getPromoBanners } from "@/lib/banners.functions";
 import { getMenu, getProductBySlug } from "@/lib/menu.functions";
 import type {
   Category,
@@ -207,11 +208,18 @@ export const productQueryOptions = (slug: string) =>
 export const restaurantQueryOptions = () =>
   queryOptions({
     queryKey: ["restaurant"],
-    queryFn: async () => ({
-      restaurant,
-      banners: promoBanners.filter((b) => b.isActive).sort((a, b) => a.sortOrder - b.sortOrder),
-      paymentMethods,
-    }),
+    queryFn: async () => {
+      // Owner-managed banners; falls back to the seed list (empty) on failure,
+      // which keeps the existing "no promotions" behaviour.
+      const stored = await getPromoBanners().catch(() => promoBanners);
+      return {
+        restaurant,
+        banners: [...stored]
+          .filter((b) => b.isActive)
+          .sort((a, b) => a.sortOrder - b.sortOrder),
+        paymentMethods,
+      };
+    },
     staleTime: 5 * 60 * 1000,
   });
 
