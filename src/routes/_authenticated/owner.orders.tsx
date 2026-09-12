@@ -17,6 +17,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { ownerListOrders, ownerUpdateOrderStatus } from "@/lib/owner.functions";
+import { ownerAssignRider, ownerListRiders } from "@/lib/riders.functions";
 import { formatBDT } from "@/lib/format";
 import { statusLabel } from "@/lib/order-status";
 
