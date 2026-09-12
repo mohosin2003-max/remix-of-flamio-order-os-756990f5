@@ -30,6 +30,9 @@ import { cn } from "@/lib/utils";
 import type { CustomerAddress, FulfillmentType } from "@/types/menu";
 
 
+/** Only used before the owner has placed the restaurant on the map. */
+const MAP_FALLBACK = { lat: 24.4449, lng: 90.7766 };
+
 export const Route = createFileRoute("/checkout")({
   head: () => ({
     meta: [
@@ -547,7 +550,88 @@ function CheckoutPage() {
 
             {isDelivery ? (
               <>
-                {zones.length > 0 ? (
+                <div className="space-y-2">
+                  <Label>Delivery location on the map</Label>
+                  <p className="text-xs text-muted-foreground">
+                    Tap the map or drag the pin to where you want your order delivered.
+                  </p>
+                  <MapPicker
+                    center={
+                      point ??
+                      (origin ? { lat: origin.latitude, lng: origin.longitude } : MAP_FALLBACK)
+                    }
+                    marker={point}
+                    origin={origin ? { lat: origin.latitude, lng: origin.longitude } : null}
+                    height={280}
+                    zoom={point || origin ? 15 : 12}
+                    onPick={(lat, lng) => setPoint({ lat, lng })}
+                  />
+                  <div className="flex flex-wrap items-center gap-2">
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      disabled={locating}
+                      onClick={() => {
+                        if (!navigator.geolocation) {
+                          toast.error("Your device can't share its location.");
+                          return;
+                        }
+                        setLocating(true);
+                        navigator.geolocation.getCurrentPosition(
+                          async (pos) => {
+                            const lat = pos.coords.latitude;
+                            const lng = pos.coords.longitude;
+                            setPoint({ lat, lng });
+                            try {
+                              const label = await reverseGeocode(lat, lng);
+                              if (label) {
+                                setForm((current) =>
+                                  current.addressLine.trim()
+                                    ? current
+                                    : { ...current, addressLine: label },
+                                );
+                              }
+                            } catch {
+                              /* the map pin is enough on its own */
+                            }
+                            setLocating(false);
+                          },
+                          () => {
+                            setLocating(false);
+                            toast.error(
+                              "We couldn't get your location. Please pick it on the map instead.",
+                            );
+                          },
+                        );
+                      }}
+                    >
+                      {locating ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
+                      Use my current location
+                    </Button>
+                    {point ? (
+                      <span className="text-xs text-muted-foreground">
+                        Selected: {point.lat.toFixed(5)}, {point.lng.toFixed(5)}
+                        {distanceM !== null ? ` · ${formatDistance(distanceM)} away` : ""}
+                      </span>
+                    ) : null}
+                  </div>
+                  {radiusMode && outOfRange ? (
+                    <p
+                      role="alert"
+                      className="rounded-lg border border-destructive/40 bg-destructive/10 px-3 py-2 text-sm text-destructive"
+                    >
+                      {outOfRangeMessage}
+                    </p>
+                  ) : null}
+                  {radiusMode && zone && !outOfRange ? (
+                    <p className="text-xs text-muted-foreground">
+                      Delivery area: {zone.name} · {formatBDT(quote.charge)}
+                      {quote.estimatedTime ? ` · ${quote.estimatedTime}` : ""}
+                    </p>
+                  ) : null}
+                </div>
+                {!radiusMode && zones.length > 0 ? (
                   <div className="space-y-2">
                     <Label>Delivery area</Label>
                     <div className="flex flex-wrap gap-2">
@@ -758,6 +842,11 @@ function CheckoutPage() {
           {isDelivery && quote.amountToFreeDelivery !== null ? (
             <p className="mt-3 text-xs text-muted-foreground">
               Add {formatBDT(quote.amountToFreeDelivery)} more for free delivery.
+            </p>
+          ) : null}
+          {isDelivery && distanceM !== null ? (
+            <p className="mt-1 text-xs text-muted-foreground">
+              Distance from the restaurant: {formatDistance(distanceM)}
             </p>
           ) : null}
           {isDelivery && quote.estimatedTime ? (
