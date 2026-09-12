@@ -6,6 +6,7 @@ import { Loader2, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 
 import { Badge } from "@/components/ui/badge";
+import { MapPicker } from "@/components/map/MapPicker";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { EmptyState } from "@/components/ui/states";
@@ -14,12 +15,20 @@ import { Label } from "@/components/ui/label";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Switch } from "@/components/ui/switch";
 import { formatBDT } from "@/lib/format";
+import { formatDistance } from "@/lib/geo";
 import {
+  getDeliveryOrigin,
   ownerDeleteDeliveryZone,
   ownerListDeliveryZones,
   ownerSaveDeliveryZone,
+  ownerSaveRestaurantLocation,
   type DeliveryZoneRecord,
 } from "@/lib/delivery.functions";
+
+/** Fallback view when the owner hasn't placed the restaurant yet. */
+const FALLBACK_CENTER = { lat: 24.4449, lng: 90.7766 };
+
+const RING_COLORS = ["#e0533d", "#f59e0b", "#3b82f6", "#10b981", "#8b5cf6"];
 
 /**
  * Owner → Delivery zones. Thin UI over the delivery-zone server functions;
@@ -39,6 +48,9 @@ type FormState = {
   estimatedDeliveryTime: string;
   isActive: boolean;
   sortOrder: string;
+  zoneType: "area" | "radius";
+  radiusMinM: string;
+  radiusMaxM: string;
 };
 
 const emptyForm = (): FormState => ({
@@ -51,6 +63,9 @@ const emptyForm = (): FormState => ({
   estimatedDeliveryTime: "",
   isActive: true,
   sortOrder: "0",
+  zoneType: "area",
+  radiusMinM: "0",
+  radiusMaxM: "",
 });
 
 function toForm(z: DeliveryZoneRecord): FormState {
@@ -64,6 +79,9 @@ function toForm(z: DeliveryZoneRecord): FormState {
     estimatedDeliveryTime: z.estimatedDeliveryTime ?? "",
     isActive: z.isActive,
     sortOrder: String(z.sortOrder),
+    zoneType: z.zoneType,
+    radiusMinM: z.radiusMinM === null ? "0" : String(z.radiusMinM),
+    radiusMaxM: z.radiusMaxM === null ? "" : String(z.radiusMaxM),
   };
 }
 
@@ -71,15 +89,24 @@ function OwnerDelivery() {
   const list = useServerFn(ownerListDeliveryZones);
   const save = useServerFn(ownerSaveDeliveryZone);
   const remove = useServerFn(ownerDeleteDeliveryZone);
+  const readOrigin = useServerFn(getDeliveryOrigin);
+  const saveOrigin = useServerFn(ownerSaveRestaurantLocation);
   const queryClient = useQueryClient();
 
   const [form, setForm] = useState<FormState>(emptyForm);
   const [saving, setSaving] = useState(false);
   const [busyId, setBusyId] = useState<string | null>(null);
+  const [pin, setPin] = useState<{ lat: number; lng: number } | null>(null);
+  const [savingPin, setSavingPin] = useState(false);
 
   const zones = useQuery({
     queryKey: ["owner-delivery-zones"],
     queryFn: () => list(),
+  });
+
+  const origin = useQuery({
+    queryKey: ["restaurant-origin"],
+    queryFn: () => readOrigin(),
   });
 
   if (zones.isLoading) return <Skeleton className="h-96 w-full" />;
@@ -122,6 +149,9 @@ function OwnerDelivery() {
           estimatedDeliveryTime: form.estimatedDeliveryTime.trim() || null,
           isActive: form.isActive,
           sortOrder: Number(form.sortOrder) || 0,
+          zoneType: form.zoneType,
+          radiusMinM: form.zoneType === "radius" ? Number(form.radiusMinM) || 0 : null,
+          radiusMaxM: form.zoneType === "radius" ? Number(form.radiusMaxM) || 0 : null,
         },
       });
       await refresh();
@@ -148,6 +178,9 @@ function OwnerDelivery() {
           estimatedDeliveryTime: zone.estimatedDeliveryTime,
           isActive,
           sortOrder: zone.sortOrder,
+          zoneType: zone.zoneType,
+          radiusMinM: zone.radiusMinM,
+          radiusMaxM: zone.radiusMaxM,
         },
       });
       await refresh();
