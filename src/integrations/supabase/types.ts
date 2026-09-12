@@ -563,6 +563,45 @@ export type Database = {
         }
         Relationships: []
       }
+      payment_providers: {
+        Row: {
+          created_at: string
+          id: string
+          is_enabled: boolean
+          label: string
+          merchant_reference: string | null
+          mode: string
+          note: string | null
+          slug: string
+          sort_order: number
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          is_enabled?: boolean
+          label: string
+          merchant_reference?: string | null
+          mode?: string
+          note?: string | null
+          slug: string
+          sort_order?: number
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          is_enabled?: boolean
+          label?: string
+          merchant_reference?: string | null
+          mode?: string
+          note?: string | null
+          slug?: string
+          sort_order?: number
+          updated_at?: string
+        }
+        Relationships: []
+      }
       product_images: {
         Row: {
           alt: string
