@@ -68,7 +68,7 @@ type RawImage = {
   sort_order: number;
 };
 
-const placeholderByCategorySlug: Record<string, string> = {
+export const placeholderByCategorySlug: Record<string, string> = {
   burger: burgerImg,
   "meat-box": meatBoxImg,
   pizza: pizzaImg,
