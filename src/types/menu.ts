@@ -135,6 +135,12 @@ export interface DeliveryZone {
   isFreeDeliveryEnabled: boolean;
   estimatedDeliveryTime: string | null;
   isActive: boolean;
+  /** "area" = the existing named area the customer picks; "radius" = a
+   * distance ring around the restaurant, matched automatically. */
+  zoneType: "area" | "radius";
+  /** Ring bounds in metres (radius zones only). */
+  radiusMinM: number | null;
+  radiusMaxM: number | null;
 }
 
 /** Global delivery configuration, owner-editable from a future dashboard. */
@@ -173,6 +179,9 @@ export interface CustomerAddress {
   landmark: string | null;
   deliveryNotes: string | null;
   isDefault: boolean;
+  /** Pinned map location, when the customer chose one. */
+  latitude: number | null;
+  longitude: number | null;
 }
 
 export interface CustomerLocation {
