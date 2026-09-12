@@ -204,7 +204,7 @@ function OwnerStaff() {
                     <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
                       Can open
                     </p>
-                    <div className="grid grid-cols-1 gap-1.5 xs:grid-cols-2">
+                    <div className="grid grid-cols-1 gap-1.5 sm:grid-cols-2">
                       {STAFF_PERMISSIONS.map((permission) => {
                         const checked = member.permissions.includes(permission);
                         return (
