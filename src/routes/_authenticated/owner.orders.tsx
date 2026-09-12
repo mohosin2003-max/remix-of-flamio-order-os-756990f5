@@ -38,14 +38,24 @@ const STATUSES = [
 function OwnerOrders() {
   const listOrders = useServerFn(ownerListOrders);
   const updateStatus = useServerFn(ownerUpdateOrderStatus);
+  const listRiders = useServerFn(ownerListRiders);
+  const assignRider = useServerFn(ownerAssignRider);
   const queryClient = useQueryClient();
   const [pending, setPending] = useState<string | null>(null);
+  const [riderPending, setRiderPending] = useState<string | null>(null);
 
   const orders = useQuery({
     queryKey: ["owner-orders"],
     queryFn: () => listOrders(),
     refetchInterval: 20_000,
   });
+
+  const riders = useQuery({
+    queryKey: ["owner-riders"],
+    queryFn: () => listRiders(),
+  });
+
+  const activeRiders = (riders.data ?? []).filter((r) => r.isActive);
 
   if (orders.isLoading) {
     return (
