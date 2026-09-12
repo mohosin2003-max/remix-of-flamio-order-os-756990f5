@@ -101,7 +101,8 @@ function OwnerPurchases() {
       ing.cost += row.totalPrice;
       byIngredient.set(row.itemName, ing);
 
-      bySupplier.set(row.supplierName, (bySupplier.get(row.supplierName) ?? 0) + row.totalPrice);
+      const supplierLabel = row.supplierName?.trim() || "No supplier";
+      bySupplier.set(supplierLabel, (bySupplier.get(supplierLabel) ?? 0) + row.totalPrice);
       const month = row.purchasedOn.slice(0, 7);
       byMonth.set(month, (byMonth.get(month) ?? 0) + row.totalPrice);
     }
