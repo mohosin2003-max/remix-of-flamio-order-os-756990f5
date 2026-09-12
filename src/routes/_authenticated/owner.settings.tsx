@@ -13,6 +13,7 @@ import { Label } from "@/components/ui/label";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
+import { PaymentProvidersSection } from "@/components/owner/payment-providers";
 import { ownerGetSettings, ownerUpdateSettings } from "@/lib/owner.functions";
 import type { RestaurantSettings } from "@/lib/owner.functions";
 
