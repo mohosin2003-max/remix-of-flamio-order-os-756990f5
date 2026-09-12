@@ -56,6 +56,7 @@ function OwnerSettings() {
     setForm((prev) => (prev ? { ...prev, [key]: value } : prev));
 
   return (
+    <div className="space-y-6">
     <Card>
       <CardContent className="space-y-4 p-4">
         <div className="flex items-center justify-between rounded-lg border border-border p-3">
