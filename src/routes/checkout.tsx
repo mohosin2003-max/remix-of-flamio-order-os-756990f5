@@ -211,7 +211,10 @@ function CheckoutPage() {
           amountToFreeDelivery: served.amountToFreeDelivery,
           isFree: served.isFree,
         }
-      : baseQuote;
+      : radiusMode && fulfillment === "delivery"
+        ? // No usable location yet: don't quote a charge we can't honour.
+          { ...baseQuote, charge: 0, estimatedTime: null }
+        : baseQuote;
 
   const outOfRange =
     radiusMode && fulfillment === "delivery" && (point === null || served?.available === false);
