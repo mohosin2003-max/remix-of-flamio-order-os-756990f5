@@ -2,11 +2,17 @@ import { createFileRoute } from "@tanstack/react-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { useMemo, useState } from "react";
-import { Loader2 } from "lucide-react";
+import { ChevronDown, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
+import {
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
+} from "@/components/ui/collapsible";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { EmptyState } from "@/components/ui/states";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -21,7 +27,11 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Textarea } from "@/components/ui/textarea";
 import { formatBDT } from "@/lib/format";
 import { ownerListInventory } from "@/lib/inventory.functions";
-import { ownerCreatePurchase, ownerListPurchases } from "@/lib/purchases.functions";
+import {
+  ownerCreatePurchase,
+  ownerListPurchases,
+  type PurchaseRecord,
+} from "@/lib/purchases.functions";
 
 /**
  * Owner → Purchases. Reuses the existing purchases server functions, which
@@ -263,33 +273,7 @@ function OwnerPurchases() {
         <SummaryCard label="This month" value={formatBDT(reports.monthTotal)} />
       </div>
 
-      <div className="space-y-3">
-        <h2 className="font-display text-base font-bold">Purchase history</h2>
-        {rows.length === 0 ? (
-          <EmptyState title="No purchases yet" description="Saved purchases will appear here." />
-        ) : (
-          <div className="space-y-2">
-            {rows.map((row) => (
-              <Card key={row.id}>
-                <CardContent className="flex flex-wrap items-center justify-between gap-3 p-4">
-                  <div className="min-w-0">
-                    <p className="font-semibold">
-                      {row.itemName}{" "}
-                      <span className="font-normal text-muted-foreground">
-                        · {row.quantity} {row.unit}
-                      </span>
-                    </p>
-                    <p className="mt-1 text-sm text-muted-foreground">
-                      {row.purchasedOn} · {row.supplierName}
-                    </p>
-                  </div>
-                  <span className="font-semibold">{formatBDT(row.totalPrice)}</span>
-                </CardContent>
-              </Card>
-            ))}
-          </div>
-        )}
-      </div>
+      <PurchaseHistory rows={rows} />
 
       {rows.length > 0 ? (
         <div className="grid gap-4 sm:grid-cols-2">
@@ -343,6 +327,196 @@ function ListCard({ title, rows }: { title: string; rows: [string, string][] }) 
           ))
         )}
       </CardContent>
+    </Card>
+  );
+}
+
+/** Monday-start week key (YYYY-MM-DD) for a YYYY-MM-DD date string. */
+function weekStartOf(dateIso: string): string {
+  const d = new Date(`${dateIso}T00:00:00`);
+  d.setDate(d.getDate() - ((d.getDay() + 6) % 7));
+  return d.toISOString().slice(0, 10);
+}
+
+function prettyDate(dateIso: string): string {
+  return new Date(`${dateIso}T00:00:00`).toLocaleDateString("en-GB", {
+    weekday: "short",
+    day: "numeric",
+    month: "short",
+    year: "numeric",
+  });
+}
+
+function prettyMonth(monthKey: string): string {
+  return new Date(`${monthKey}-01T00:00:00`).toLocaleDateString("en-GB", {
+    month: "long",
+    year: "numeric",
+  });
+}
+
+function prettyWeek(weekStart: string): string {
+  const start = new Date(`${weekStart}T00:00:00`);
+  const end = new Date(start);
+  end.setDate(start.getDate() + 6);
+  const fmt = (d: Date) => d.toLocaleDateString("en-GB", { day: "numeric", month: "short" });
+  return `${fmt(start)} – ${fmt(end)}`;
+}
+
+/**
+ * Grouped purchase history. Read-only view over the same `rows` used by the
+ * existing summaries — no extra fetching, no backend changes.
+ */
+function PurchaseHistory({ rows }: { rows: PurchaseRecord[] }) {
+  const [view, setView] = useState<"date" | "week" | "month">("date");
+  const [week, setWeek] = useState<string>("");
+  const [month, setMonth] = useState<string>("");
+
+  const weeks = useMemo(
+    () => [...new Set(rows.map((r) => weekStartOf(r.purchasedOn)))].sort((a, b) => b.localeCompare(a)),
+    [rows],
+  );
+  const months = useMemo(
+    () => [...new Set(rows.map((r) => r.purchasedOn.slice(0, 7)))].sort((a, b) => b.localeCompare(a)),
+    [rows],
+  );
+
+  const selectedWeek = week || weeks[0] || "";
+  const selectedMonth = month || months[0] || "";
+
+  const visible = useMemo(() => {
+    if (view === "week") return rows.filter((r) => weekStartOf(r.purchasedOn) === selectedWeek);
+    if (view === "month") return rows.filter((r) => r.purchasedOn.slice(0, 7) === selectedMonth);
+    return rows;
+  }, [rows, view, selectedWeek, selectedMonth]);
+
+  const groups = useMemo(() => {
+    const map = new Map<string, PurchaseRecord[]>();
+    for (const row of visible) {
+      const list = map.get(row.purchasedOn) ?? [];
+      list.push(row);
+      map.set(row.purchasedOn, list);
+    }
+    return [...map.entries()].sort((a, b) => b[0].localeCompare(a[0]));
+  }, [visible]);
+
+  const periodTotal = visible.reduce((sum, r) => sum + r.totalPrice, 0);
+
+  return (
+    <div className="space-y-3">
+      <h2 className="font-display text-base font-bold">Purchase history</h2>
+
+      {rows.length === 0 ? (
+        <EmptyState title="No purchases yet" description="Saved purchases will appear here." />
+      ) : (
+        <>
+          <Tabs value={view} onValueChange={(value) => setView(value as typeof view)}>
+            <TabsList className="w-full">
+              <TabsTrigger className="flex-1" value="date">
+                By date
+              </TabsTrigger>
+              <TabsTrigger className="flex-1" value="week">
+                Weekly
+              </TabsTrigger>
+              <TabsTrigger className="flex-1" value="month">
+                Monthly
+              </TabsTrigger>
+            </TabsList>
+          </Tabs>
+
+          {view === "week" ? (
+            <Select value={selectedWeek} onValueChange={setWeek}>
+              <SelectTrigger>
+                <SelectValue placeholder="Choose a week" />
+              </SelectTrigger>
+              <SelectContent>
+                {weeks.map((value) => (
+                  <SelectItem key={value} value={value}>
+                    {prettyWeek(value)}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          ) : null}
+
+          {view === "month" ? (
+            <Select value={selectedMonth} onValueChange={setMonth}>
+              <SelectTrigger>
+                <SelectValue placeholder="Choose a month" />
+              </SelectTrigger>
+              <SelectContent>
+                {months.map((value) => (
+                  <SelectItem key={value} value={value}>
+                    {prettyMonth(value)}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          ) : null}
+
+          {view !== "date" ? (
+            <div className="flex items-center justify-between gap-3 rounded-lg border border-border p-3 text-sm">
+              <span className="text-muted-foreground">
+                {view === "week" ? "Week total" : "Month total"}
+              </span>
+              <span className="font-display text-base font-bold">{formatBDT(periodTotal)}</span>
+            </div>
+          ) : null}
+
+          {groups.length === 0 ? (
+            <EmptyState
+              title="No purchases in this period"
+              description="Choose another period to see purchase records."
+            />
+          ) : (
+            <div className="space-y-2">
+              {groups.map(([date, dayRows]) => (
+                <DateGroup key={date} date={date} rows={dayRows} />
+              ))}
+            </div>
+          )}
+        </>
+      )}
+    </div>
+  );
+}
+
+function DateGroup({ date, rows }: { date: string; rows: PurchaseRecord[] }) {
+  const [open, setOpen] = useState(false);
+  const dayTotal = rows.reduce((sum, r) => sum + r.totalPrice, 0);
+
+  return (
+    <Card>
+      <Collapsible open={open} onOpenChange={setOpen}>
+        <CollapsibleTrigger className="flex w-full items-center justify-between gap-3 p-4 text-left">
+          <span className="flex min-w-0 items-center gap-2">
+            <ChevronDown
+              className={`h-4 w-4 shrink-0 text-muted-foreground transition-transform ${open ? "rotate-180" : ""}`}
+            />
+            <span className="min-w-0">
+              <span className="block truncate font-semibold">{prettyDate(date)}</span>
+              <span className="block text-xs text-muted-foreground">
+                {rows.length} purchase{rows.length === 1 ? "" : "s"}
+              </span>
+            </span>
+          </span>
+          <span className="font-semibold">{formatBDT(dayTotal)}</span>
+        </CollapsibleTrigger>
+        <CollapsibleContent>
+          <div className="space-y-2 border-t border-border px-4 py-3">
+            {rows.map((row) => (
+              <div key={row.id} className="flex flex-wrap items-start justify-between gap-2 text-sm">
+                <div className="min-w-0">
+                  <p className="font-medium">{row.itemName}</p>
+                  <p className="text-muted-foreground">
+                    {row.supplierName} · {row.quantity} {row.unit} × {formatBDT(row.unitPrice)}
+                  </p>
+                </div>
+                <span className="font-semibold">{formatBDT(row.totalPrice)}</span>
+              </div>
+            ))}
+          </div>
+        </CollapsibleContent>
+      </Collapsible>
     </Card>
   );
 }
