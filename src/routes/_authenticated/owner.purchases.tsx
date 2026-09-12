@@ -32,6 +32,7 @@ import {
   ownerListPurchases,
   type PurchaseRecord,
 } from "@/lib/purchases.functions";
+import { ownerListSuppliers } from "@/lib/suppliers.functions";
 
 /**
  * Owner → Purchases. Reuses the existing purchases server functions, which
