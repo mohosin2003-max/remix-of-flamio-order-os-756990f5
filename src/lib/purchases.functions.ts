@@ -78,6 +78,7 @@ export const ownerCreatePurchase = createServerFn({ method: "POST" })
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
 
     const totalPrice = Number((data.quantity * data.unitPrice).toFixed(2));
+    const supplierName = (data.supplierName ?? "").trim();
 
     const { data: inserted, error } = await supabaseAdmin
       .from("purchases")
