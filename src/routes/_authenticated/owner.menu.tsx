@@ -2,7 +2,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { useState } from "react";
-import { Loader2, Pencil, Plus, Trash2 } from "lucide-react";
+import { Layers, Loader2, Pencil, Plus, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 
 import { Badge } from "@/components/ui/badge";
@@ -32,10 +32,13 @@ import { formatBDT } from "@/lib/format";
 import {
   ownerDeleteCategory,
   ownerDeleteProduct,
+  ownerDeleteVariant,
   ownerGetCatalog,
   ownerSaveCategory,
   ownerSaveProduct,
   ownerSetProductAvailability,
+  ownerListVariants,
+  ownerSaveVariant,
 } from "@/lib/owner.functions";
 import type { OwnerCategory, OwnerProduct } from "@/lib/owner.functions";
 
