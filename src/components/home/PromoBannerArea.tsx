@@ -1,6 +1,3 @@
-import { Link } from "@tanstack/react-router";
-
-import { Button } from "@/components/ui/button";
 import type { PromoBanner } from "@/types/menu";
 
 /**
@@ -13,20 +10,24 @@ export function PromoBannerArea({ banners }: { banners: PromoBanner[] }) {
   return (
     <section aria-label="Promotions" className="mx-auto w-full max-w-6xl px-4 sm:px-6">
       <div className="grid gap-4 md:grid-cols-2">
-        {banners.map((banner) => (
-          <article
-            key={banner.id}
-            className="rounded-2xl border border-primary/30 bg-gradient-ember p-6 text-primary-foreground shadow-ember"
-          >
-            <h3 className="font-display text-xl font-extrabold">{banner.title}</h3>
-            {banner.subtitle ? <p className="mt-2 text-sm">{banner.subtitle}</p> : null}
-            {banner.ctaLabel && banner.ctaHref ? (
-              <Button asChild variant="secondary" size="sm" className="mt-4">
-                <Link to={banner.ctaHref}>{banner.ctaLabel}</Link>
-              </Button>
-            ) : null}
-          </article>
-        ))}
+        {banners.map((banner) => {
+          const content = banner.desktopImageUrl ? (
+            <picture className="block aspect-[16/7] w-full sm:aspect-[16/5]">
+              {banner.mobileImageUrl ? <source media="(max-width: 639px)" srcSet={banner.mobileImageUrl} /> : null}
+              <img src={banner.desktopImageUrl} alt="Promotional banner" loading="lazy" className="size-full object-cover" />
+            </picture>
+          ) : (
+            <article className="bg-gradient-ember p-6 text-primary-foreground">
+              <h3 className="font-display text-xl font-extrabold">{banner.title}</h3>
+              {banner.subtitle ? <p className="mt-2 text-sm">{banner.subtitle}</p> : null}
+            </article>
+          );
+          return (
+            <div key={banner.id} className="overflow-hidden rounded-2xl border border-primary/30 shadow-ember">
+              {banner.ctaHref ? <a href={banner.ctaHref} aria-label="Open promotion">{content}</a> : content}
+            </div>
+          );
+        })}
       </div>
     </section>
   );

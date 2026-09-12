@@ -15,18 +15,42 @@ import type { PromoBanner } from "@/types/menu";
 
 type BannerRow = Database["public"]["Tables"]["promo_banners"]["Row"];
 
-const COLUMNS = "id,title,subtitle,cta_label,cta_href,is_active,sort_order";
+const COLUMNS =
+  "id,title,subtitle,cta_label,cta_href,desktop_image_path,mobile_image_path,is_active,sort_order";
 
-function toRecord(row: BannerRow): PromoBanner {
+function toRecord(
+  row: BannerRow,
+  urls: { desktop: string | null; mobile: string | null } = { desktop: null, mobile: null },
+): PromoBanner {
   return {
     id: row.id,
     title: row.title,
     subtitle: row.subtitle,
     ctaLabel: row.cta_label,
     ctaHref: row.cta_href,
+    desktopImagePath: row.desktop_image_path,
+    mobileImagePath: row.mobile_image_path,
+    desktopImageUrl: urls.desktop,
+    mobileImageUrl: urls.mobile,
     isActive: row.is_active,
     sortOrder: row.sort_order,
   };
+}
+
+async function withSignedUrls(rows: BannerRow[]): Promise<PromoBanner[]> {
+  const paths = [...new Set(rows.flatMap((row) => [row.desktop_image_path, row.mobile_image_path]).filter((path): path is string => Boolean(path)))];
+  if (paths.length === 0) return rows.map((row) => toRecord(row));
+
+  const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+  const { data, error } = await supabaseAdmin.storage.from("banner-images").createSignedUrls(paths, 60 * 60);
+  if (error) console.error("Banner image signing failed", error);
+  const signedByPath = new Map((data ?? []).map((item) => [item.path, item.signedUrl]));
+  return rows.map((row) =>
+    toRecord(row, {
+      desktop: row.desktop_image_path ? (signedByPath.get(row.desktop_image_path) ?? null) : null,
+      mobile: row.mobile_image_path ? (signedByPath.get(row.mobile_image_path) ?? null) : null,
+    }),
+  );
 }
 
 function createPublicClient(url: string, key: string) {
@@ -66,7 +90,7 @@ export const getPromoBanners = createServerFn({ method: "GET" }).handler(
       console.error("Promo banner read failed", error);
       return [];
     }
-    return (data ?? []).map((row) => toRecord(row as BannerRow));
+    return withSignedUrls((data ?? []) as BannerRow[]);
   },
 );
 
@@ -87,7 +111,7 @@ export const ownerListPromoBanners = createServerFn({ method: "GET" })
       console.error("Promo banner list failed", error);
       throw new Error("We couldn't load banners. Please try again.");
     }
-    return (data ?? []).map((row) => toRecord(row as BannerRow));
+    return withSignedUrls((data ?? []) as BannerRow[]);
   });
 
 export const ownerSavePromoBanner = createServerFn({ method: "POST" })
@@ -96,10 +120,20 @@ export const ownerSavePromoBanner = createServerFn({ method: "POST" })
     z
       .object({
         id: z.string().uuid().nullable(),
-        title: z.string().trim().min(2).max(120),
-        subtitle: z.string().trim().max(240).nullable(),
-        ctaLabel: z.string().trim().max(40).nullable(),
-        ctaHref: z.string().trim().max(200).nullable(),
+        desktopImagePath: z.string().trim().min(1).max(500),
+        mobileImagePath: z.string().trim().min(1).max(500).nullable(),
+        clickHref: z
+          .string()
+          .trim()
+          .max(500)
+          .nullable()
+          .refine(
+            (value) =>
+              value === null ||
+              (value.startsWith("/") && !value.startsWith("//")) ||
+              /^https:\/\//i.test(value),
+            "Use a Flamio page or a secure HTTPS link.",
+          ),
         isActive: z.boolean(),
         sortOrder: z.number().int().min(0).max(999),
       })
@@ -111,13 +145,27 @@ export const ownerSavePromoBanner = createServerFn({ method: "POST" })
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
 
     const payload = {
-      title: data.title,
-      subtitle: data.subtitle,
-      cta_label: data.ctaLabel,
-      cta_href: data.ctaHref,
+      title: "Promotional banner",
+      subtitle: null,
+      cta_label: null,
+      cta_href: data.clickHref,
+      desktop_image_path: data.desktopImagePath,
+      mobile_image_path: data.mobileImagePath,
       is_active: data.isActive,
       sort_order: data.sortOrder,
     };
+
+    let oldPaths: string[] = [];
+    if (data.id) {
+      const { data: existing } = await supabaseAdmin
+        .from("promo_banners")
+        .select("desktop_image_path,mobile_image_path")
+        .eq("id", data.id)
+        .maybeSingle();
+      oldPaths = [existing?.desktop_image_path, existing?.mobile_image_path].filter(
+        (path): path is string => Boolean(path),
+      );
+    }
 
     const { error } = data.id
       ? await supabaseAdmin.from("promo_banners").update(payload).eq("id", data.id)
@@ -126,6 +174,12 @@ export const ownerSavePromoBanner = createServerFn({ method: "POST" })
     if (error) {
       console.error("Promo banner save failed", error);
       throw new Error("We couldn't save this banner. Please try again.");
+    }
+    const retained = new Set([data.desktopImagePath, data.mobileImagePath].filter(Boolean));
+    const replaced = oldPaths.filter((path) => !retained.has(path));
+    if (replaced.length > 0) {
+      const { error: removeError } = await supabaseAdmin.storage.from("banner-images").remove(replaced);
+      if (removeError) console.error("Replaced banner image cleanup failed", removeError);
     }
     return { ok: true };
   });
@@ -138,10 +192,22 @@ export const ownerDeletePromoBanner = createServerFn({ method: "POST" })
     await assertOwner(context.userId);
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
 
+    const { data: existing } = await supabaseAdmin
+      .from("promo_banners")
+      .select("desktop_image_path,mobile_image_path")
+      .eq("id", data.id)
+      .maybeSingle();
     const { error } = await supabaseAdmin.from("promo_banners").delete().eq("id", data.id);
     if (error) {
       console.error("Promo banner delete failed", error);
       throw new Error("We couldn't delete this banner. Please try again.");
+    }
+    const paths = [existing?.desktop_image_path, existing?.mobile_image_path].filter(
+      (path): path is string => Boolean(path),
+    );
+    if (paths.length > 0) {
+      const { error: removeError } = await supabaseAdmin.storage.from("banner-images").remove(paths);
+      if (removeError) console.error("Deleted banner image cleanup failed", removeError);
     }
     return { ok: true };
   });
