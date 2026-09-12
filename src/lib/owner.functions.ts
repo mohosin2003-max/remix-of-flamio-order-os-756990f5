@@ -71,26 +71,39 @@ export interface RestaurantSettings {
   googleMapsUrl: string | null;
 }
 
-/** Is the caller an owner/admin? Also reports whether ownership is unclaimed. */
+/**
+ * What can the caller open in the dashboard? Owners/managers are unrestricted;
+ * staff get exactly the permissions switched on for them. Also reports whether
+ * ownership is unclaimed.
+ */
 export const getOwnerAccess = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
   .handler(async ({ context }) => {
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { getAccessProfile } = await import("@/lib/owner.server");
 
-    const { data: mine } = await supabaseAdmin
-      .from("user_roles")
-      .select("role")
-      .eq("user_id", context.userId);
+    const [{ data: mine }, access] = await Promise.all([
+      supabaseAdmin.from("user_roles").select("role").eq("user_id", context.userId),
+      getAccessProfile(context.userId),
+    ]);
 
     const roles = (mine ?? []).map((r) => r.role as string);
-    const isOwner = roles.includes("owner") || roles.includes("admin");
 
     const { count } = await supabaseAdmin
       .from("user_roles")
       .select("id", { count: "exact", head: true })
       .eq("role", "owner");
 
-    return { isOwner, roles, canClaim: !isOwner && (count ?? 0) === 0 };
+    const hasAccess = access.isManager || access.permissions.length > 0;
+
+    return {
+      isOwner: hasAccess,
+      isManager: access.isManager,
+      isStaff: access.isStaff,
+      permissions: access.permissions as string[],
+      roles,
+      canClaim: !hasAccess && (count ?? 0) === 0,
+    };
   });
 
 /** First-run bootstrap: the first signed-in user may claim ownership once. */
