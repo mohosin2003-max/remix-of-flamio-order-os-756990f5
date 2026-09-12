@@ -70,8 +70,16 @@ export async function assertPermission(
   userId: string,
   permission: StaffPermission,
 ): Promise<AccessProfile> {
+  return assertAnyPermission(userId, [permission]);
+}
+
+/** Owner/manager, or a staff member holding at least one of these. */
+export async function assertAnyPermission(
+  userId: string,
+  permissions: StaffPermission[],
+): Promise<AccessProfile> {
   const access = await getAccessProfile(userId);
   if (access.isManager) return access;
-  if (access.isStaff && access.permissions.includes(permission)) return access;
+  if (access.isStaff && permissions.some((p) => access.permissions.includes(p))) return access;
   throw new Error("Forbidden");
 }
