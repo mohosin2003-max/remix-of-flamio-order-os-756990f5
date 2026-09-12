@@ -127,7 +127,7 @@ export const ownerListOrders = createServerFn({ method: "GET" })
     const { data, error } = await supabaseAdmin
       .from("orders")
       .select(
-        "id, code, status, fulfillment, customer_name, customer_phone, total, created_at, address_line, area, payment_label",
+        "id, code, status, fulfillment, customer_name, customer_phone, total, created_at, address_line, area, payment_label, rider_id, riders(name)",
       )
       .order("created_at", { ascending: false })
       .limit(100);
