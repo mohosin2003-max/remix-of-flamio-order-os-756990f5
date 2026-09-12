@@ -814,8 +814,10 @@ export type Database = {
           created_at: string
           cta_href: string | null
           cta_label: string | null
+          desktop_image_path: string | null
           id: string
           is_active: boolean
+          mobile_image_path: string | null
           sort_order: number
           subtitle: string | null
           title: string
@@ -825,19 +827,23 @@ export type Database = {
           created_at?: string
           cta_href?: string | null
           cta_label?: string | null
+          desktop_image_path?: string | null
           id?: string
           is_active?: boolean
+          mobile_image_path?: string | null
           sort_order?: number
           subtitle?: string | null
-          title: string
+          title?: string
           updated_at?: string
         }
         Update: {
           created_at?: string
           cta_href?: string | null
           cta_label?: string | null
+          desktop_image_path?: string | null
           id?: string
           is_active?: boolean
+          mobile_image_path?: string | null
           sort_order?: number
           subtitle?: string | null
           title?: string
