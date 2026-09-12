@@ -33,6 +33,7 @@ function OwnerPos() {
   const queryClient = useQueryClient();
 
   const [lines, setLines] = useState<Record<string, number>>({});
+  const [activeCategory, setActiveCategory] = useState<string | null>(null);
   const [customerName, setCustomerName] = useState("Walk-in customer");
   const [customerPhone, setCustomerPhone] = useState("");
   const [saving, setSaving] = useState(false);
@@ -123,6 +124,12 @@ function OwnerPos() {
     }
   };
 
+  const visibleCategories = categories.filter((c) =>
+    products.some((p) => p.categoryId === c.id),
+  );
+  const selectedCategory = activeCategory ?? visibleCategories[0]?.id ?? null;
+  const visibleProducts = products.filter((p) => p.categoryId === selectedCategory);
+
   return (
     <div className="space-y-5">
       {products.length === 0 ? (
@@ -131,48 +138,90 @@ function OwnerPos() {
           description="Make menu items available to sell them at the counter."
         />
       ) : (
-        categories
-          .filter((c) => products.some((p) => p.categoryId === c.id))
-          .map((category) => (
-            <div key={category.id} className="space-y-2">
-              <h2 className="font-display text-base font-bold">{category.name}</h2>
-              {products
-                .filter((p) => p.categoryId === category.id)
-                .map((product) => (
-                  <Card key={product.id}>
-                    <CardContent className="flex flex-wrap items-center justify-between gap-3 p-3">
-                      <div className="min-w-0">
-                        <p className="font-medium">{product.name}</p>
-                        <p className="text-sm text-muted-foreground">
-                          {formatBDT(product.basePrice)}
-                        </p>
+        <>
+          {/* Category switcher — existing categories, horizontal scroll on mobile */}
+          <div className="-mx-1 flex gap-2 overflow-x-auto px-1 pb-1">
+            {visibleCategories.map((category) => (
+              <Button
+                key={category.id}
+                size="sm"
+                variant={category.id === selectedCategory ? "default" : "outline"}
+                className="shrink-0"
+                onClick={() => setActiveCategory(category.id)}
+              >
+                {category.name}
+              </Button>
+            ))}
+          </div>
+
+          {/* Visual product grid — same catalog data/images as the customer menu */}
+          <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
+            {visibleProducts.map((product) => {
+              const qty = lines[product.id] ?? 0;
+              return (
+                <Card key={product.id} className="overflow-hidden">
+                  <button
+                    type="button"
+                    className="block w-full text-left"
+                    aria-label={`Add one ${product.name}`}
+                    onClick={() => bump(product.id, 1)}
+                  >
+                    {product.imageUrl ? (
+                      <img
+                        src={product.imageUrl}
+                        alt={product.name}
+                        className="aspect-[4/3] w-full object-cover"
+                        loading="lazy"
+                      />
+                    ) : (
+                      <div className="grid aspect-[4/3] w-full place-items-center bg-muted text-2xl font-bold text-muted-foreground">
+                        {product.name.charAt(0)}
                       </div>
-                      <div className="flex items-center gap-2">
+                    )}
+                    <div className="space-y-0.5 p-2.5">
+                      <p className="truncate text-sm font-semibold">{product.name}</p>
+                      <p className="text-sm font-bold text-primary">
+                        {formatBDT(product.basePrice)}
+                      </p>
+                    </div>
+                  </button>
+                  <div className="flex items-center justify-between gap-2 px-2.5 pb-2.5">
+                    {qty > 0 ? (
+                      <>
                         <Button
                           size="icon"
                           variant="outline"
+                          className="h-9 w-9 shrink-0"
                           aria-label={`Remove one ${product.name}`}
                           onClick={() => bump(product.id, -1)}
                         >
                           <Minus className="h-4 w-4" />
                         </Button>
-                        <span className="w-6 text-center text-sm font-semibold">
-                          {lines[product.id] ?? 0}
-                        </span>
+                        <span className="text-sm font-semibold">{qty}</span>
                         <Button
                           size="icon"
-                          variant="outline"
+                          className="h-9 w-9 shrink-0"
                           aria-label={`Add one ${product.name}`}
                           onClick={() => bump(product.id, 1)}
                         >
                           <Plus className="h-4 w-4" />
                         </Button>
-                      </div>
-                    </CardContent>
-                  </Card>
-                ))}
-            </div>
-          ))
+                      </>
+                    ) : (
+                      <Button
+                        className="h-9 w-full"
+                        aria-label={`Add one ${product.name}`}
+                        onClick={() => bump(product.id, 1)}
+                      >
+                        <Plus className="mr-1 h-4 w-4" /> Add
+                      </Button>
+                    )}
+                  </div>
+                </Card>
+              );
+            })}
+          </div>
+        </>
       )}
 
       <Card>
