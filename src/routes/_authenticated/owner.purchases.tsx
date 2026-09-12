@@ -263,33 +263,7 @@ function OwnerPurchases() {
         <SummaryCard label="This month" value={formatBDT(reports.monthTotal)} />
       </div>
 
-      <div className="space-y-3">
-        <h2 className="font-display text-base font-bold">Purchase history</h2>
-        {rows.length === 0 ? (
-          <EmptyState title="No purchases yet" description="Saved purchases will appear here." />
-        ) : (
-          <div className="space-y-2">
-            {rows.map((row) => (
-              <Card key={row.id}>
-                <CardContent className="flex flex-wrap items-center justify-between gap-3 p-4">
-                  <div className="min-w-0">
-                    <p className="font-semibold">
-                      {row.itemName}{" "}
-                      <span className="font-normal text-muted-foreground">
-                        · {row.quantity} {row.unit}
-                      </span>
-                    </p>
-                    <p className="mt-1 text-sm text-muted-foreground">
-                      {row.purchasedOn} · {row.supplierName}
-                    </p>
-                  </div>
-                  <span className="font-semibold">{formatBDT(row.totalPrice)}</span>
-                </CardContent>
-              </Card>
-            ))}
-          </div>
-        )}
-      </div>
+      <PurchaseHistory rows={rows} />
 
       {rows.length > 0 ? (
         <div className="grid gap-4 sm:grid-cols-2">
