@@ -69,6 +69,10 @@ function OwnerPurchases() {
     queryKey: ["owner-inventory"],
     queryFn: () => listInventory(),
   });
+  const suppliers = useQuery({
+    queryKey: ["owner-suppliers"],
+    queryFn: () => listSuppliers(),
+  });
 
   const items = inventory.data?.items ?? [];
   const rows = purchases.data ?? [];
