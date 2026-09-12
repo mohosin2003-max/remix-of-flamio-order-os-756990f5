@@ -168,6 +168,9 @@ export const ownerSaveDeliveryZone = createServerFn({ method: "POST" })
       estimated_delivery_time: data.estimatedDeliveryTime,
       is_active: data.isActive,
       sort_order: data.sortOrder,
+      zone_type: data.zoneType,
+      radius_min_m: data.zoneType === "radius" ? (data.radiusMinM ?? 0) : null,
+      radius_max_m: data.zoneType === "radius" ? data.radiusMaxM : null,
     };
 
     if (data.id) {
