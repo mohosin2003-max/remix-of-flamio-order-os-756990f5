@@ -50,6 +50,9 @@ function toRecord(row: ZoneRow): DeliveryZoneRecord {
     estimatedDeliveryTime: row.estimated_delivery_time,
     isActive: row.is_active,
     sortOrder: row.sort_order,
+    zoneType: row.zone_type === "radius" ? "radius" : "area",
+    radiusMinM: row.radius_min_m === null ? null : Number(row.radius_min_m),
+    radiusMaxM: row.radius_max_m === null ? null : Number(row.radius_max_m),
   };
 }
 
