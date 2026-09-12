@@ -585,3 +585,113 @@ export const ownerUpdateSettings = createServerFn({ method: "POST" })
     }
     return { ok: true };
   });
+
+/* ------------------------------------------------------------------ */
+/* Product variants (sizes / options) — reuses the existing            */
+/* public.product_variants table. No new storage.                      */
+/* ------------------------------------------------------------------ */
+
+export type OwnerVariant = {
+  id: string;
+  productId: string;
+  name: string;
+  price: number;
+  isAvailable: boolean;
+  sortOrder: number;
+};
+
+export const ownerListVariants = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input: unknown) => z.object({ productId: z.string().uuid() }).parse(input))
+  .handler(async ({ data, context }): Promise<OwnerVariant[]> => {
+    const { assertOwner } = await import("@/lib/owner.server");
+    await assertOwner(context.userId);
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+
+    const { data: rows, error } = await supabaseAdmin
+      .from("product_variants")
+      .select("id, product_id, name, price, is_available, sort_order")
+      .eq("product_id", data.productId)
+      .order("sort_order");
+
+    if (error) {
+      console.error("List variants failed", error);
+      throw new Error("We couldn't load the options for this item.");
+    }
+
+    return (rows ?? []).map((v) => ({
+      id: v.id,
+      productId: v.product_id,
+      name: v.name,
+      price: Number(v.price),
+      isAvailable: v.is_available,
+      sortOrder: v.sort_order,
+    }));
+  });
+
+export const ownerSaveVariant = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input: unknown) =>
+    z
+      .object({
+        id: z.string().uuid().nullable().optional(),
+        productId: z.string().uuid(),
+        name: z.string().trim().min(1).max(60),
+        price: z.number().nonnegative().max(1000000),
+        isAvailable: z.boolean(),
+        sortOrder: z.number().int().min(0).max(999),
+      })
+      .parse(input),
+  )
+  .handler(async ({ data, context }) => {
+    const { assertOwner } = await import("@/lib/owner.server");
+    await assertOwner(context.userId);
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+
+    const row = {
+      product_id: data.productId,
+      name: data.name,
+      price: data.price,
+      is_available: data.isAvailable,
+      sort_order: data.sortOrder,
+    };
+
+    if (data.id) {
+      const { error } = await supabaseAdmin
+        .from("product_variants")
+        .update(row)
+        .eq("id", data.id);
+      if (error) {
+        console.error("Update variant failed", error);
+        throw new Error("We couldn't save this option. Please try again.");
+      }
+      return { ok: true, id: data.id };
+    }
+
+    const { data: inserted, error } = await supabaseAdmin
+      .from("product_variants")
+      .insert(row)
+      .select("id")
+      .single();
+    if (error || !inserted) {
+      console.error("Insert variant failed", error);
+      throw new Error("We couldn't add this option. Please try again.");
+    }
+    return { ok: true, id: inserted.id };
+  });
+
+export const ownerDeleteVariant = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input: unknown) => z.object({ id: z.string().uuid() }).parse(input))
+  .handler(async ({ data, context }) => {
+    const { assertOwner } = await import("@/lib/owner.server");
+    await assertOwner(context.userId);
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+
+    const { error } = await supabaseAdmin.from("product_variants").delete().eq("id", data.id);
+    if (error) {
+      console.error("Delete variant failed", error);
+      throw new Error("We couldn't delete this option. Please try again.");
+    }
+    return { ok: true };
+  });
