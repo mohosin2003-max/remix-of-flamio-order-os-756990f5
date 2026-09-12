@@ -150,12 +150,7 @@ export const ownerListOrders = createServerFn({ method: "GET" })
       area: o.area,
       paymentLabel: o.payment_label,
       riderId: o.rider_id,
-      riderName:
-        (o as { riders?: { name: string } | { name: string }[] | null }).riders == null
-          ? null
-          : Array.isArray((o as { riders: { name: string }[] }).riders)
-            ? ((o as { riders: { name: string }[] }).riders[0]?.name ?? null)
-            : (o as { riders: { name: string } }).riders.name,
+      riderName: o.riders?.name ?? null,
     }));
   });
 
