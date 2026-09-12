@@ -219,3 +219,89 @@ export const ownerDeleteDeliveryZone = createServerFn({ method: "POST" })
     }
     return { ok: true };
   });
+
+/* ------------------------------------------------------------------ */
+/* Map-based delivery: restaurant origin + automatic distance pricing.  */
+/* Reuses the same delivery_zones rows and restaurant_settings row.     */
+/* ------------------------------------------------------------------ */
+
+export interface DeliveryOriginRecord {
+  latitude: number;
+  longitude: number;
+}
+
+/** Public: the restaurant's map location, used as the centre of the radius
+ * zones. Returns null when the owner hasn't set it yet. */
+export const getDeliveryOrigin = createServerFn({ method: "GET" }).handler(
+  async (): Promise<DeliveryOriginRecord | null> => {
+    const key = process.env["SUPABASE_PUBLISHABLE_KEY"];
+    const url = process.env["SUPABASE_URL"];
+    if (!key || !url) return null;
+
+    const supabase = createPublicClient(url, key);
+    const { data, error } = await supabase
+      .from("restaurant_settings")
+      .select("latitude, longitude")
+      .order("created_at")
+      .limit(1)
+      .maybeSingle();
+
+    if (error || !data || data.latitude === null || data.longitude === null) return null;
+    return { latitude: Number(data.latitude), longitude: Number(data.longitude) };
+  },
+);
+
+export const ownerSaveRestaurantLocation = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input: unknown) =>
+    z
+      .object({
+        latitude: z.number().min(-90).max(90),
+        longitude: z.number().min(-180).max(180),
+      })
+      .parse(input),
+  )
+  .handler(async ({ data, context }) => {
+    const { assertPermission } = await import("@/lib/owner.server");
+    await assertPermission(context.userId, "settings");
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+
+    const { data: row } = await supabaseAdmin
+      .from("restaurant_settings")
+      .select("id")
+      .order("created_at")
+      .limit(1)
+      .maybeSingle();
+
+    if (!row) throw new Error("Restaurant settings are not set up yet.");
+
+    const { error } = await supabaseAdmin
+      .from("restaurant_settings")
+      .update({ latitude: data.latitude, longitude: data.longitude })
+      .eq("id", row.id);
+
+    if (error) {
+      console.error("Restaurant location update failed", error);
+      throw new Error("We couldn't save the restaurant location. Please try again.");
+    }
+    return { ok: true };
+  });
+
+/** Public: priced preview of the delivery fee for a pinned location. The same
+ * server-side maths runs again inside `placeOrder`, so this is only a preview
+ * — it can never set the price that is charged. */
+export const quoteDeliveryForLocation = createServerFn({ method: "POST" })
+  .inputValidator((input: unknown) =>
+    z
+      .object({
+        latitude: z.number().min(-90).max(90).nullable(),
+        longitude: z.number().min(-180).max(180).nullable(),
+        subtotal: z.number().nonnegative().max(10_000_000),
+        discount: z.number().nonnegative().max(10_000_000),
+      })
+      .parse(input),
+  )
+  .handler(async ({ data }) => {
+    const { resolveLocationDelivery } = await import("@/lib/delivery.server");
+    return resolveLocationDelivery(data);
+  });
