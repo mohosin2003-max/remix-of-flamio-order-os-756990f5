@@ -39,6 +39,7 @@ const TABS = [
   { to: "/owner/purchases", label: "Purchases", exact: false },
   { to: "/owner/delivery", label: "Delivery", exact: false },
   { to: "/owner/coupons", label: "Coupons", exact: false },
+  { to: "/owner/banners", label: "Banners", exact: false },
   { to: "/owner/reports", label: "Reports", exact: false },
   { to: "/owner/customers", label: "Customers", exact: false },
   { to: "/owner/settings", label: "Settings", exact: false },

@@ -6,6 +6,7 @@ import pastaImg from "@/assets/cat-pasta.jpg";
 import pizzaImg from "@/assets/cat-pizza.jpg";
 import shawarmaImg from "@/assets/cat-shawarma.jpg";
 import { paymentMethods, promoBanners, restaurant } from "@/data/restaurant";
+import { getPromoBanners } from "@/lib/banners.functions";
 import { getMenu, getProductBySlug } from "@/lib/menu.functions";
 import type {
   Category,
