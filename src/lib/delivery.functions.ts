@@ -142,7 +142,16 @@ export const ownerSaveDeliveryZone = createServerFn({ method: "POST" })
         estimatedDeliveryTime: z.string().trim().max(60).nullable(),
         isActive: z.boolean(),
         sortOrder: z.number().int().min(0).max(999),
+        zoneType: z.enum(["area", "radius"]).default("area"),
+        radiusMinM: z.number().nonnegative().max(500_000).nullable().default(null),
+        radiusMaxM: z.number().positive().max(500_000).nullable().default(null),
       })
+      .refine(
+        (v) =>
+          v.zoneType !== "radius" ||
+          (v.radiusMaxM !== null && v.radiusMaxM > (v.radiusMinM ?? 0)),
+        { message: "The end distance must be larger than the start distance." },
+      )
       .parse(input),
   )
   .handler(async ({ data, context }) => {
