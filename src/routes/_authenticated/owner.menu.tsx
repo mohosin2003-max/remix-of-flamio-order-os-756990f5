@@ -447,6 +447,14 @@ function OwnerMenu() {
                           }
                         }}
                       />
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => setVariantProduct(product)}
+                      >
+                        <Layers className="mr-1 h-4 w-4" />
+                        Options
+                      </Button>
                       <Button size="icon" variant="ghost" onClick={() => setDraft(toDraft(product))}>
                         <Pencil className="h-4 w-4" />
                       </Button>
