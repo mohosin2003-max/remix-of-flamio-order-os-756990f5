@@ -175,6 +175,9 @@ function OwnerSettings() {
         </Button>
       </CardContent>
     </Card>
+
+    <PaymentProvidersSection />
+    </div>
   );
 }
 
