@@ -25,7 +25,11 @@ import {
  */
 
 const statusLabel = (p: PaymentProviderRow) =>
-  p.status === "disabled" ? "Disabled" : p.status === "configured" ? "Configured" : "Not configured";
+  p.status === "disabled"
+    ? "Disabled"
+    : p.status === "configured"
+      ? "Configured"
+      : "Not configured";
 
 const statusVariant = (p: PaymentProviderRow) =>
   p.status === "configured" ? "default" : p.status === "disabled" ? "secondary" : "outline";
@@ -168,8 +172,8 @@ export function PaymentProvidersSection() {
                     <p className="rounded-lg bg-secondary p-3 text-xs text-muted-foreground">
                       bKash credentials (app key, app secret, username, password) must be applied
                       for and approved by bKash directly — they are issued to your registered
-                      merchant account. When you have them, they will be stored in the secure
-                      server secret store, never in this form, the database, or anything the
+                      merchant account. When you have them, they will be stored in the secure server
+                      secret store, never in this form, the database, or anything the
                       customer&apos;s browser can read.
                     </p>
                   ) : (
