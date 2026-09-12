@@ -14,6 +14,8 @@ type Slide = {
   productSlug: string | null;
   ctaLabel: string | null;
   ctaHref: string | null;
+  mobileImage: string | null;
+  imageOnly: boolean;
 };
 
 /**
@@ -32,7 +34,9 @@ export function HomeCarousel({
         key: b.id,
         title: b.title,
         subtitle: b.subtitle ?? null,
-        image: null,
+        image: b.desktopImageUrl,
+        mobileImage: b.mobileImageUrl,
+        imageOnly: Boolean(b.desktopImageUrl),
         productSlug: null,
         ctaLabel: b.ctaLabel ?? null,
         ctaHref: b.ctaHref ?? null,
@@ -42,6 +46,8 @@ export function HomeCarousel({
         title: p.name,
         subtitle: p.description ?? `From ${formatBDT(displayPrice(p))}`,
         image: primaryImage(p),
+        mobileImage: null,
+        imageOnly: false,
         productSlug: p.slug,
         ctaLabel: null,
         ctaHref: null,
@@ -75,23 +81,19 @@ export function HomeCarousel({
       >
         {slides.map((slide) => {
           const body = (
-            <div className="relative h-44 w-full overflow-hidden rounded-2xl border border-border/70 bg-card shadow-card sm:h-64">
-              {slide.image ? (
-                <img
-                  src={slide.image}
-                  alt={slide.title}
-                  loading="lazy"
-                  className="absolute inset-0 size-full object-cover opacity-70"
-                />
+            <div className="relative w-full overflow-hidden rounded-2xl border border-border/70 bg-card shadow-card">
+              {slide.imageOnly && slide.image ? (
+                <picture className="block aspect-[16/7] w-full sm:aspect-[16/5]">
+                  {slide.mobileImage ? <source media="(max-width: 639px)" srcSet={slide.mobileImage} /> : null}
+                  <img src={slide.image} alt="Promotional banner" className="size-full object-cover" />
+                </picture>
+              ) : slide.image ? (
+                <img src={slide.image} alt={slide.title} loading="lazy" className="h-44 w-full object-cover opacity-70 sm:h-64" />
               ) : (
-                <div className="absolute inset-0 bg-gradient-ember opacity-90" aria-hidden="true" />
+                <div className="h-44 bg-gradient-ember opacity-90 sm:h-64" aria-hidden="true" />
               )}
-              <div
-                className="absolute inset-0"
-                style={{ background: "var(--gradient-fade)" }}
-                aria-hidden="true"
-              />
-              <div className="absolute inset-x-0 bottom-0 p-4 sm:p-6">
+              {!slide.imageOnly ? <div className="absolute inset-0" style={{ background: "var(--gradient-fade)" }} aria-hidden="true" /> : null}
+              {!slide.imageOnly ? <div className="absolute inset-x-0 bottom-0 p-4 sm:p-6">
                 <h2 className="font-display text-xl font-extrabold sm:text-3xl">{slide.title}</h2>
                 {slide.subtitle ? (
                   <p className="mt-1 line-clamp-2 max-w-lg text-sm text-muted-foreground sm:text-base">
@@ -101,7 +103,7 @@ export function HomeCarousel({
                 {slide.ctaLabel && !slide.ctaHref ? (
                   <span className="mt-3 inline-block text-sm font-semibold">{slide.ctaLabel}</span>
                 ) : null}
-              </div>
+              </div> : null}
             </div>
           );
 
@@ -115,10 +117,8 @@ export function HomeCarousel({
                 >
                   {body}
                 </Link>
-              ) : slide.ctaHref === "/menu" ? (
-                <Link to="/menu" search={{}}>
-                  {body}
-                </Link>
+              ) : slide.ctaHref ? (
+                <a href={slide.ctaHref} aria-label="Open promotion">{body}</a>
               ) : (
                 body
               )}

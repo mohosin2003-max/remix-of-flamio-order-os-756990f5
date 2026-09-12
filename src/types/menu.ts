@@ -92,6 +92,11 @@ export interface PromoBanner {
   subtitle: string | null;
   ctaLabel: string | null;
   ctaHref: string | null;
+  /** Private storage paths are kept server-side; these are short-lived display URLs. */
+  desktopImagePath: string | null;
+  mobileImagePath: string | null;
+  desktopImageUrl: string | null;
+  mobileImageUrl: string | null;
   isActive: boolean;
   sortOrder: number;
 }
