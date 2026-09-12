@@ -29,6 +29,8 @@ const placeOrderSchema = z.object({
   deliveryNotes: z.string().trim().max(400).nullable(),
   zoneId: z.string().nullable(),
   zoneName: z.string().nullable(),
+  latitude: z.number().min(-90).max(90).nullable().default(null),
+  longitude: z.number().min(-180).max(180).nullable().default(null),
   estimatedTime: z.string().nullable(),
   pickupNote: z.string().nullable(),
   subtotal: z.number().nonnegative(),
@@ -77,13 +79,52 @@ export const placeOrder = createServerFn({ method: "POST" })
       discount = result.discount;
       couponCode = coupon.code;
     }
-    const deliveryCharge = data.fulfillment === "delivery" ? data.deliveryCharge : 0;
-    const total = Math.max(subtotal - discount, 0) + deliveryCharge;
     const isDelivery = data.fulfillment === "delivery";
 
     if (isDelivery && !data.addressLine) {
       throw new Error("A delivery address is required.");
     }
+
+    // Distance-based delivery: when the owner has configured radius zones the
+    // charge, zone and estimated time are recalculated here from the pinned
+    // coordinates. Anything sent by the browser is ignored. With no radius
+    // zones configured this block is inert and the original area-based
+    // behaviour is used unchanged.
+    let deliveryCharge = isDelivery ? data.deliveryCharge : 0;
+    let zoneId = isDelivery ? data.zoneId : null;
+    let zoneName = isDelivery ? data.zoneName : null;
+    let estimatedTime = data.estimatedTime;
+    let distanceM: number | null = null;
+    let latitude = isDelivery ? data.latitude : null;
+    let longitude = isDelivery ? data.longitude : null;
+
+    if (isDelivery) {
+      const { resolveLocationDelivery } = await import("@/lib/delivery.server");
+      const located = await resolveLocationDelivery({
+        latitude: data.latitude,
+        longitude: data.longitude,
+        subtotal,
+        discount,
+      });
+      if (located.radiusMode) {
+        if (!located.available) {
+          throw new Error(located.message ?? "We can't deliver to that location.");
+        }
+        if (!located.meetsMinimumOrder) {
+          throw new Error(`The minimum order for delivery is ${located.minimumOrder}.`);
+        }
+        deliveryCharge = located.charge;
+        zoneId = located.zoneSlug;
+        zoneName = located.zoneName;
+        estimatedTime = located.estimatedTime;
+        distanceM = located.distanceM;
+      }
+    } else {
+      latitude = null;
+      longitude = null;
+    }
+
+    const total = Math.max(subtotal - discount, 0) + deliveryCharge;
 
     let inserted: { id: string; code: string; created_at: string } | null = null;
     let lastError: unknown = null;
@@ -104,9 +145,12 @@ export const placeOrder = createServerFn({ method: "POST" })
           area: isDelivery ? data.area : null,
           landmark: isDelivery ? data.landmark : null,
           delivery_notes: data.deliveryNotes,
-          zone_id: isDelivery ? data.zoneId : null,
-          zone_name: isDelivery ? data.zoneName : null,
-          estimated_time: data.estimatedTime,
+          zone_id: zoneId,
+          zone_name: zoneName,
+          latitude,
+          longitude,
+          distance_m: distanceM,
+          estimated_time: estimatedTime,
           pickup_note: isDelivery ? null : data.pickupNote,
           subtotal,
           discount,
