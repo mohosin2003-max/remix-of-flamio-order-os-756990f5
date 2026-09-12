@@ -137,6 +137,7 @@ function OwnerMenu() {
   const [catSaving, setCatSaving] = useState(false);
   const [deleting, setDeleting] = useState<OwnerCategory | null>(null);
   const [reassignTo, setReassignTo] = useState<string>("");
+  const [variantProduct, setVariantProduct] = useState<OwnerProduct | null>(null);
 
   const catalog = useQuery({
     queryKey: ["owner-catalog"],
