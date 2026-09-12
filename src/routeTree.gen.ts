@@ -31,6 +31,7 @@ import { Route as AuthenticatedAccountOrdersRouteImport } from './routes/_authen
 import { Route as AuthenticatedOwnerIndexRouteImport } from './routes/_authenticated/owner.index'
 import { Route as AuthenticatedOwnerCouponsRouteImport } from './routes/_authenticated/owner.coupons'
 import { Route as AuthenticatedOwnerCustomersRouteImport } from './routes/_authenticated/owner.customers'
+import { Route as AuthenticatedOwnerDeliveryRouteImport } from './routes/_authenticated/owner.delivery'
 import { Route as AuthenticatedOwnerInventoryRouteImport } from './routes/_authenticated/owner.inventory'
 import { Route as AuthenticatedOwnerMenuRouteImport } from './routes/_authenticated/owner.menu'
 import { Route as AuthenticatedOwnerOrdersRouteImport } from './routes/_authenticated/owner.orders'
@@ -155,6 +156,12 @@ const AuthenticatedOwnerCustomersRoute =
     path: '/customers',
     getParentRoute: () => AuthenticatedOwnerRoute,
   } as any)
+const AuthenticatedOwnerDeliveryRoute =
+  AuthenticatedOwnerDeliveryRouteImport.update({
+    id: '/delivery',
+    path: '/delivery',
+    getParentRoute: () => AuthenticatedOwnerRoute,
+  } as any)
 const AuthenticatedOwnerInventoryRoute =
   AuthenticatedOwnerInventoryRouteImport.update({
     id: '/inventory',
@@ -216,6 +223,7 @@ export interface FileRoutesByFullPath {
   '/account/orders': typeof AuthenticatedAccountOrdersRoute
   '/owner/coupons': typeof AuthenticatedOwnerCouponsRoute
   '/owner/customers': typeof AuthenticatedOwnerCustomersRoute
+  '/owner/delivery': typeof AuthenticatedOwnerDeliveryRoute
   '/owner/inventory': typeof AuthenticatedOwnerInventoryRoute
   '/owner/menu': typeof AuthenticatedOwnerMenuRoute
   '/owner/orders': typeof AuthenticatedOwnerOrdersRoute
@@ -245,6 +253,7 @@ export interface FileRoutesByTo {
   '/account/orders': typeof AuthenticatedAccountOrdersRoute
   '/owner/coupons': typeof AuthenticatedOwnerCouponsRoute
   '/owner/customers': typeof AuthenticatedOwnerCustomersRoute
+  '/owner/delivery': typeof AuthenticatedOwnerDeliveryRoute
   '/owner/inventory': typeof AuthenticatedOwnerInventoryRoute
   '/owner/menu': typeof AuthenticatedOwnerMenuRoute
   '/owner/orders': typeof AuthenticatedOwnerOrdersRoute
@@ -277,6 +286,7 @@ export interface FileRoutesById {
   '/_authenticated/account/orders': typeof AuthenticatedAccountOrdersRoute
   '/_authenticated/owner/coupons': typeof AuthenticatedOwnerCouponsRoute
   '/_authenticated/owner/customers': typeof AuthenticatedOwnerCustomersRoute
+  '/_authenticated/owner/delivery': typeof AuthenticatedOwnerDeliveryRoute
   '/_authenticated/owner/inventory': typeof AuthenticatedOwnerInventoryRoute
   '/_authenticated/owner/menu': typeof AuthenticatedOwnerMenuRoute
   '/_authenticated/owner/orders': typeof AuthenticatedOwnerOrdersRoute
@@ -309,6 +319,7 @@ export interface FileRouteTypes {
     | '/account/orders'
     | '/owner/coupons'
     | '/owner/customers'
+    | '/owner/delivery'
     | '/owner/inventory'
     | '/owner/menu'
     | '/owner/orders'
@@ -338,6 +349,7 @@ export interface FileRouteTypes {
     | '/account/orders'
     | '/owner/coupons'
     | '/owner/customers'
+    | '/owner/delivery'
     | '/owner/inventory'
     | '/owner/menu'
     | '/owner/orders'
@@ -369,6 +381,7 @@ export interface FileRouteTypes {
     | '/_authenticated/account/orders'
     | '/_authenticated/owner/coupons'
     | '/_authenticated/owner/customers'
+    | '/_authenticated/owner/delivery'
     | '/_authenticated/owner/inventory'
     | '/_authenticated/owner/menu'
     | '/_authenticated/owner/orders'
@@ -551,6 +564,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedOwnerCustomersRouteImport
       parentRoute: typeof AuthenticatedOwnerRoute
     }
+    '/_authenticated/owner/delivery': {
+      id: '/_authenticated/owner/delivery'
+      path: '/delivery'
+      fullPath: '/owner/delivery'
+      preLoaderRoute: typeof AuthenticatedOwnerDeliveryRouteImport
+      parentRoute: typeof AuthenticatedOwnerRoute
+    }
     '/_authenticated/owner/inventory': {
       id: '/_authenticated/owner/inventory'
       path: '/inventory'
@@ -606,6 +626,7 @@ declare module '@tanstack/react-router' {
 interface AuthenticatedOwnerRouteChildren {
   AuthenticatedOwnerCouponsRoute: typeof AuthenticatedOwnerCouponsRoute
   AuthenticatedOwnerCustomersRoute: typeof AuthenticatedOwnerCustomersRoute
+  AuthenticatedOwnerDeliveryRoute: typeof AuthenticatedOwnerDeliveryRoute
   AuthenticatedOwnerInventoryRoute: typeof AuthenticatedOwnerInventoryRoute
   AuthenticatedOwnerMenuRoute: typeof AuthenticatedOwnerMenuRoute
   AuthenticatedOwnerOrdersRoute: typeof AuthenticatedOwnerOrdersRoute
@@ -619,6 +640,7 @@ interface AuthenticatedOwnerRouteChildren {
 const AuthenticatedOwnerRouteChildren: AuthenticatedOwnerRouteChildren = {
   AuthenticatedOwnerCouponsRoute: AuthenticatedOwnerCouponsRoute,
   AuthenticatedOwnerCustomersRoute: AuthenticatedOwnerCustomersRoute,
+  AuthenticatedOwnerDeliveryRoute: AuthenticatedOwnerDeliveryRoute,
   AuthenticatedOwnerInventoryRoute: AuthenticatedOwnerInventoryRoute,
   AuthenticatedOwnerMenuRoute: AuthenticatedOwnerMenuRoute,
   AuthenticatedOwnerOrdersRoute: AuthenticatedOwnerOrdersRoute,

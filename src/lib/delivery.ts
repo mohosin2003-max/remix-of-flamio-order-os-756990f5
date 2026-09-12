@@ -1,6 +1,7 @@
 import { queryOptions } from "@tanstack/react-query";
 
 import { deliverySettings, deliveryZones } from "@/data/delivery";
+import { getDeliveryZones } from "@/lib/delivery.functions";
 import type {
   DeliveryQuote,
   DeliverySettings,
@@ -9,16 +10,37 @@ import type {
 } from "@/types/menu";
 
 /**
- * Single read layer for delivery configuration. Swap the seed data for a
- * server function later without touching any component.
+ * Single read layer for delivery configuration. Zones now come from the
+ * database (owner-managed); the global fallback settings and the quote maths
+ * below are unchanged. If the read fails or returns nothing, the original
+ * seed zones are used so checkout can never lose its delivery pricing.
  */
 export const deliveryQueryOptions = () =>
   queryOptions({
     queryKey: ["delivery-settings"],
-    queryFn: async () => ({
-      settings: deliverySettings,
-      zones: deliveryZones.filter((z) => z.isActive),
-    }),
+    queryFn: async () => {
+      let zones: DeliveryZone[] = [];
+      try {
+        const rows = await getDeliveryZones();
+        zones = rows.map((z) => ({
+          // Orders and saved addresses store the slug as the zone id.
+          id: z.slug,
+          name: z.name,
+          deliveryCharge: z.deliveryCharge,
+          minimumOrder: z.minimumOrder,
+          freeDeliveryThreshold: z.freeDeliveryThreshold,
+          isFreeDeliveryEnabled: z.isFreeDeliveryEnabled,
+          estimatedDeliveryTime: z.estimatedDeliveryTime,
+          isActive: z.isActive,
+        }));
+      } catch (error) {
+        console.error("Delivery zones unavailable, using defaults", error);
+      }
+
+      if (zones.length === 0) zones = deliveryZones.filter((z) => z.isActive);
+
+      return { settings: deliverySettings, zones: zones.filter((z) => z.isActive) };
+    },
     staleTime: 5 * 60 * 1000,
   });
 

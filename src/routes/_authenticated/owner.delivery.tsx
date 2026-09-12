@@ -1,0 +1,341 @@
+import { createFileRoute } from "@tanstack/react-router";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useServerFn } from "@tanstack/react-start";
+import { useState } from "react";
+import { Loader2, Trash2 } from "lucide-react";
+import { toast } from "sonner";
+
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent } from "@/components/ui/card";
+import { EmptyState } from "@/components/ui/states";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Skeleton } from "@/components/ui/skeleton";
+import { Switch } from "@/components/ui/switch";
+import { formatBDT } from "@/lib/format";
+import {
+  ownerDeleteDeliveryZone,
+  ownerListDeliveryZones,
+  ownerSaveDeliveryZone,
+  type DeliveryZoneRecord,
+} from "@/lib/delivery.functions";
+
+/**
+ * Owner → Delivery zones. Thin UI over the delivery-zone server functions;
+ * the checkout delivery-charge maths in `src/lib/delivery.ts` is untouched.
+ */
+export const Route = createFileRoute("/_authenticated/owner/delivery")({
+  component: OwnerDelivery,
+});
+
+type FormState = {
+  id: string | null;
+  name: string;
+  deliveryCharge: string;
+  minimumOrder: string;
+  freeDeliveryThreshold: string;
+  isFreeDeliveryEnabled: boolean;
+  estimatedDeliveryTime: string;
+  isActive: boolean;
+  sortOrder: string;
+};
+
+const emptyForm = (): FormState => ({
+  id: null,
+  name: "",
+  deliveryCharge: "50",
+  minimumOrder: "0",
+  freeDeliveryThreshold: "",
+  isFreeDeliveryEnabled: true,
+  estimatedDeliveryTime: "",
+  isActive: true,
+  sortOrder: "0",
+});
+
+function toForm(z: DeliveryZoneRecord): FormState {
+  return {
+    id: z.id,
+    name: z.name,
+    deliveryCharge: String(z.deliveryCharge),
+    minimumOrder: String(z.minimumOrder),
+    freeDeliveryThreshold: z.freeDeliveryThreshold === null ? "" : String(z.freeDeliveryThreshold),
+    isFreeDeliveryEnabled: z.isFreeDeliveryEnabled,
+    estimatedDeliveryTime: z.estimatedDeliveryTime ?? "",
+    isActive: z.isActive,
+    sortOrder: String(z.sortOrder),
+  };
+}
+
+function OwnerDelivery() {
+  const list = useServerFn(ownerListDeliveryZones);
+  const save = useServerFn(ownerSaveDeliveryZone);
+  const remove = useServerFn(ownerDeleteDeliveryZone);
+  const queryClient = useQueryClient();
+
+  const [form, setForm] = useState<FormState>(emptyForm);
+  const [saving, setSaving] = useState(false);
+  const [busyId, setBusyId] = useState<string | null>(null);
+
+  const zones = useQuery({
+    queryKey: ["owner-delivery-zones"],
+    queryFn: () => list(),
+  });
+
+  if (zones.isLoading) return <Skeleton className="h-96 w-full" />;
+
+  if (zones.error) {
+    return (
+      <EmptyState
+        title="Couldn't load delivery zones"
+        description="Something went wrong loading your delivery areas."
+        action={<Button onClick={() => void zones.refetch()}>Try again</Button>}
+      />
+    );
+  }
+
+  const rows = zones.data ?? [];
+
+  const refresh = async () => {
+    await queryClient.invalidateQueries({ queryKey: ["owner-delivery-zones"] });
+    // Checkout reads the public zone list under this key.
+    await queryClient.invalidateQueries({ queryKey: ["delivery-settings"] });
+  };
+
+  const submit = async () => {
+    if (form.name.trim().length < 2) {
+      toast.error("Please enter a zone name.");
+      return;
+    }
+    setSaving(true);
+    try {
+      await save({
+        data: {
+          id: form.id,
+          name: form.name.trim(),
+          deliveryCharge: Number(form.deliveryCharge) || 0,
+          minimumOrder: Number(form.minimumOrder) || 0,
+          freeDeliveryThreshold: form.freeDeliveryThreshold.trim()
+            ? Number(form.freeDeliveryThreshold)
+            : null,
+          isFreeDeliveryEnabled: form.isFreeDeliveryEnabled,
+          estimatedDeliveryTime: form.estimatedDeliveryTime.trim() || null,
+          isActive: form.isActive,
+          sortOrder: Number(form.sortOrder) || 0,
+        },
+      });
+      await refresh();
+      setForm(emptyForm());
+      toast.success("Delivery zone saved");
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Couldn't save this delivery zone");
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const toggleActive = async (zone: DeliveryZoneRecord, isActive: boolean) => {
+    setBusyId(zone.id);
+    try {
+      await save({
+        data: {
+          id: zone.id,
+          name: zone.name,
+          deliveryCharge: zone.deliveryCharge,
+          minimumOrder: zone.minimumOrder,
+          freeDeliveryThreshold: zone.freeDeliveryThreshold,
+          isFreeDeliveryEnabled: zone.isFreeDeliveryEnabled,
+          estimatedDeliveryTime: zone.estimatedDeliveryTime,
+          isActive,
+          sortOrder: zone.sortOrder,
+        },
+      });
+      await refresh();
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Couldn't update this zone");
+    } finally {
+      setBusyId(null);
+    }
+  };
+
+  const deleteZone = async (zone: DeliveryZoneRecord) => {
+    if (!window.confirm(`Delete "${zone.name}"? Past orders are not affected.`)) return;
+    setBusyId(zone.id);
+    try {
+      await remove({ data: { id: zone.id } });
+      if (form.id === zone.id) setForm(emptyForm());
+      await refresh();
+      toast.success("Delivery zone deleted");
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Couldn't delete this zone");
+    } finally {
+      setBusyId(null);
+    }
+  };
+
+  return (
+    <div className="space-y-6">
+      <Card>
+        <CardContent className="space-y-4 p-4">
+          <h2 className="font-display text-base font-bold">
+            {form.id ? "Edit delivery zone" : "New delivery zone"}
+          </h2>
+          <div className="grid gap-4 sm:grid-cols-2">
+            <div className="space-y-1.5">
+              <Label htmlFor="dz-name">Zone name</Label>
+              <Input
+                id="dz-name"
+                value={form.name}
+                placeholder="Kishoreganj Sadar"
+                onChange={(e) => setForm({ ...form, name: e.target.value })}
+              />
+            </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="dz-charge">Delivery charge</Label>
+              <Input
+                id="dz-charge"
+                type="number"
+                min="0"
+                step="1"
+                inputMode="decimal"
+                value={form.deliveryCharge}
+                onChange={(e) => setForm({ ...form, deliveryCharge: e.target.value })}
+              />
+            </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="dz-min">Minimum order</Label>
+              <Input
+                id="dz-min"
+                type="number"
+                min="0"
+                step="1"
+                inputMode="decimal"
+                value={form.minimumOrder}
+                onChange={(e) => setForm({ ...form, minimumOrder: e.target.value })}
+              />
+            </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="dz-free">Free delivery above (optional)</Label>
+              <Input
+                id="dz-free"
+                type="number"
+                min="0"
+                step="1"
+                inputMode="decimal"
+                value={form.freeDeliveryThreshold}
+                onChange={(e) => setForm({ ...form, freeDeliveryThreshold: e.target.value })}
+              />
+            </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="dz-time">Estimated delivery time (optional)</Label>
+              <Input
+                id="dz-time"
+                value={form.estimatedDeliveryTime}
+                placeholder="30–45 min"
+                onChange={(e) => setForm({ ...form, estimatedDeliveryTime: e.target.value })}
+              />
+            </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="dz-sort">Display order</Label>
+              <Input
+                id="dz-sort"
+                type="number"
+                min="0"
+                step="1"
+                inputMode="numeric"
+                value={form.sortOrder}
+                onChange={(e) => setForm({ ...form, sortOrder: e.target.value })}
+              />
+            </div>
+            <div className="flex items-center justify-between gap-3 rounded-lg border border-border p-3">
+              <Label htmlFor="dz-freeon">Free delivery enabled</Label>
+              <Switch
+                id="dz-freeon"
+                checked={form.isFreeDeliveryEnabled}
+                onCheckedChange={(checked) =>
+                  setForm({ ...form, isFreeDeliveryEnabled: checked })
+                }
+              />
+            </div>
+            <div className="flex items-center justify-between gap-3 rounded-lg border border-border p-3">
+              <Label htmlFor="dz-active">Active</Label>
+              <Switch
+                id="dz-active"
+                checked={form.isActive}
+                onCheckedChange={(checked) => setForm({ ...form, isActive: checked })}
+              />
+            </div>
+          </div>
+          <div className="flex flex-wrap gap-2">
+            <Button disabled={saving} onClick={() => void submit()}>
+              {saving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
+              {form.id ? "Save changes" : "Create zone"}
+            </Button>
+            {form.id ? (
+              <Button variant="outline" onClick={() => setForm(emptyForm())}>
+                Cancel
+              </Button>
+            ) : null}
+          </div>
+        </CardContent>
+      </Card>
+
+      <div className="space-y-3">
+        <h2 className="font-display text-base font-bold">Delivery zones</h2>
+        <p className="text-sm text-muted-foreground">
+          Customers pick an active zone at checkout. If no zone matches, the default delivery
+          charge is used.
+        </p>
+        {rows.length === 0 ? (
+          <EmptyState
+            title="No delivery zones yet"
+            description="Add a zone to charge different delivery rates by area."
+          />
+        ) : (
+          rows.map((z) => (
+            <Card key={z.id}>
+              <CardContent className="flex flex-wrap items-center justify-between gap-3 p-4">
+                <div className="min-w-0">
+                  <div className="flex items-center gap-2 font-semibold">
+                    {z.name}
+                    <Badge variant={z.isActive ? "default" : "secondary"}>
+                      {z.isActive ? "Active" : "Inactive"}
+                    </Badge>
+                  </div>
+                  <p className="mt-1 text-sm text-muted-foreground">
+                    {formatBDT(z.deliveryCharge)} delivery
+                    {z.minimumOrder > 0 ? ` · min ${formatBDT(z.minimumOrder)}` : ""}
+                    {z.isFreeDeliveryEnabled && z.freeDeliveryThreshold !== null
+                      ? ` · free above ${formatBDT(z.freeDeliveryThreshold)}`
+                      : ""}
+                    {z.estimatedDeliveryTime ? ` · ${z.estimatedDeliveryTime}` : ""}
+                  </p>
+                </div>
+                <div className="flex items-center gap-2">
+                  <Switch
+                    aria-label={`${z.isActive ? "Disable" : "Enable"} ${z.name}`}
+                    checked={z.isActive}
+                    disabled={busyId === z.id}
+                    onCheckedChange={(checked) => void toggleActive(z, checked)}
+                  />
+                  <Button variant="outline" size="sm" onClick={() => setForm(toForm(z))}>
+                    Edit
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    aria-label={`Delete ${z.name}`}
+                    disabled={busyId === z.id}
+                    onClick={() => void deleteZone(z)}
+                  >
+                    <Trash2 className="h-4 w-4" />
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
+          ))
+        )}
+      </div>
+    </div>
+  );
+}
