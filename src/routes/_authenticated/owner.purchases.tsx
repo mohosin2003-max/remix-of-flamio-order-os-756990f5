@@ -195,13 +195,19 @@ function OwnerPurchases() {
                 />
               </div>
               <div className="space-y-1.5">
-                <Label htmlFor="pu-supplier">Supplier</Label>
+                <Label htmlFor="pu-supplier">Supplier (optional)</Label>
                 <Input
                   id="pu-supplier"
+                  list="pu-supplier-options"
                   value={form.supplierName}
-                  placeholder="e.g. Karwan Bazar Traders"
+                  placeholder="Leave empty if not needed"
                   onChange={(e) => setForm({ ...form, supplierName: e.target.value })}
                 />
+                <datalist id="pu-supplier-options">
+                  {supplierNames.map((name) => (
+                    <option key={name} value={name} />
+                  ))}
+                </datalist>
               </div>
               <div className="space-y-1.5">
                 <Label>Ingredient</Label>
