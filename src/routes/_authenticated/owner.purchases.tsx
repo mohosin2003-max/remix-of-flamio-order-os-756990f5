@@ -32,6 +32,7 @@ import {
   ownerListPurchases,
   type PurchaseRecord,
 } from "@/lib/purchases.functions";
+import { ownerListSuppliers } from "@/lib/suppliers.functions";
 
 /**
  * Owner → Purchases. Reuses the existing purchases server functions, which
@@ -48,6 +49,7 @@ function OwnerPurchases() {
   const listPurchases = useServerFn(ownerListPurchases);
   const listInventory = useServerFn(ownerListInventory);
   const createPurchase = useServerFn(ownerCreatePurchase);
+  const listSuppliers = useServerFn(ownerListSuppliers);
   const queryClient = useQueryClient();
 
   const [saving, setSaving] = useState(false);
@@ -68,9 +70,14 @@ function OwnerPurchases() {
     queryKey: ["owner-inventory"],
     queryFn: () => listInventory(),
   });
+  const suppliers = useQuery({
+    queryKey: ["owner-suppliers"],
+    queryFn: () => listSuppliers(),
+  });
 
   const items = inventory.data?.items ?? [];
   const rows = purchases.data ?? [];
+  const supplierNames = (suppliers.data ?? []).filter((s) => s.isActive).map((s) => s.name);
 
   const quantity = Number(form.quantity) || 0;
   const unitPrice = Number(form.unitPrice) || 0;
@@ -101,7 +108,8 @@ function OwnerPurchases() {
       ing.cost += row.totalPrice;
       byIngredient.set(row.itemName, ing);
 
-      bySupplier.set(row.supplierName, (bySupplier.get(row.supplierName) ?? 0) + row.totalPrice);
+      const supplierLabel = row.supplierName?.trim() || "No supplier";
+      bySupplier.set(supplierLabel, (bySupplier.get(supplierLabel) ?? 0) + row.totalPrice);
       const month = row.purchasedOn.slice(0, 7);
       byMonth.set(month, (byMonth.get(month) ?? 0) + row.totalPrice);
     }
@@ -195,13 +203,19 @@ function OwnerPurchases() {
                 />
               </div>
               <div className="space-y-1.5">
-                <Label htmlFor="pu-supplier">Supplier</Label>
+                <Label htmlFor="pu-supplier">Supplier (optional)</Label>
                 <Input
                   id="pu-supplier"
+                  list="pu-supplier-options"
                   value={form.supplierName}
-                  placeholder="e.g. Karwan Bazar Traders"
+                  placeholder="Leave empty if not needed"
                   onChange={(e) => setForm({ ...form, supplierName: e.target.value })}
                 />
+                <datalist id="pu-supplier-options">
+                  {supplierNames.map((name) => (
+                    <option key={name} value={name} />
+                  ))}
+                </datalist>
               </div>
               <div className="space-y-1.5">
                 <Label>Ingredient</Label>
@@ -508,7 +522,8 @@ function DateGroup({ date, rows }: { date: string; rows: PurchaseRecord[] }) {
                 <div className="min-w-0">
                   <p className="font-medium">{row.itemName}</p>
                   <p className="text-muted-foreground">
-                    {row.supplierName} · {row.quantity} {row.unit} × {formatBDT(row.unitPrice)}
+                    {row.supplierName?.trim() || "No supplier"} · {row.quantity} {row.unit} ×{" "}
+                    {formatBDT(row.unitPrice)}
                   </p>
                 </div>
                 <span className="font-semibold">{formatBDT(row.totalPrice)}</span>

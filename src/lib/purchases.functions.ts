@@ -64,7 +64,8 @@ export const ownerCreatePurchase = createServerFn({ method: "POST" })
     z
       .object({
         purchasedOn: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
-        supplierName: z.string().trim().min(2).max(80),
+        // Supplier is optional: purchases save fine without one.
+        supplierName: z.string().trim().max(80).optional().nullable(),
         itemId: z.string().uuid(),
         quantity: z.number().positive().max(1000000),
         unitPrice: z.number().nonnegative().max(1000000),
@@ -77,12 +78,13 @@ export const ownerCreatePurchase = createServerFn({ method: "POST" })
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
 
     const totalPrice = Number((data.quantity * data.unitPrice).toFixed(2));
+    const supplierName = (data.supplierName ?? "").trim();
 
     const { data: inserted, error } = await supabaseAdmin
       .from("purchases")
       .insert({
         purchased_on: data.purchasedOn,
-        supplier_name: data.supplierName,
+        supplier_name: supplierName,
         item_id: data.itemId,
         quantity: data.quantity,
         unit_price: data.unitPrice,
@@ -103,7 +105,7 @@ export const ownerCreatePurchase = createServerFn({ method: "POST" })
       _item_id: data.itemId,
       _change_type: "add",
       _quantity: data.quantity,
-      _note: `Purchase from ${data.supplierName}`,
+      _note: supplierName ? `Purchase from ${supplierName}` : "Purchase",
       _created_by: context.userId,
     });
 

@@ -41,6 +41,7 @@ import { Route as AuthenticatedOwnerPurchasesRouteImport } from './routes/_authe
 import { Route as AuthenticatedOwnerReportsRouteImport } from './routes/_authenticated/owner.reports'
 import { Route as AuthenticatedOwnerSettingsRouteImport } from './routes/_authenticated/owner.settings'
 import { Route as AuthenticatedOwnerStaffRouteImport } from './routes/_authenticated/owner.staff'
+import { Route as AuthenticatedOwnerSuppliersRouteImport } from './routes/_authenticated/owner.suppliers'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
@@ -215,6 +216,12 @@ const AuthenticatedOwnerStaffRoute = AuthenticatedOwnerStaffRouteImport.update({
   path: '/staff',
   getParentRoute: () => AuthenticatedOwnerRoute,
 } as any)
+const AuthenticatedOwnerSuppliersRoute =
+  AuthenticatedOwnerSuppliersRouteImport.update({
+    id: '/suppliers',
+    path: '/suppliers',
+    getParentRoute: () => AuthenticatedOwnerRoute,
+  } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -246,6 +253,7 @@ export interface FileRoutesByFullPath {
   '/owner/reports': typeof AuthenticatedOwnerReportsRoute
   '/owner/settings': typeof AuthenticatedOwnerSettingsRoute
   '/owner/staff': typeof AuthenticatedOwnerStaffRoute
+  '/owner/suppliers': typeof AuthenticatedOwnerSuppliersRoute
   '/account/': typeof AuthenticatedAccountIndexRoute
   '/owner/': typeof AuthenticatedOwnerIndexRoute
 }
@@ -278,6 +286,7 @@ export interface FileRoutesByTo {
   '/owner/reports': typeof AuthenticatedOwnerReportsRoute
   '/owner/settings': typeof AuthenticatedOwnerSettingsRoute
   '/owner/staff': typeof AuthenticatedOwnerStaffRoute
+  '/owner/suppliers': typeof AuthenticatedOwnerSuppliersRoute
   '/account': typeof AuthenticatedAccountIndexRoute
   '/owner': typeof AuthenticatedOwnerIndexRoute
 }
@@ -313,6 +322,7 @@ export interface FileRoutesById {
   '/_authenticated/owner/reports': typeof AuthenticatedOwnerReportsRoute
   '/_authenticated/owner/settings': typeof AuthenticatedOwnerSettingsRoute
   '/_authenticated/owner/staff': typeof AuthenticatedOwnerStaffRoute
+  '/_authenticated/owner/suppliers': typeof AuthenticatedOwnerSuppliersRoute
   '/_authenticated/account/': typeof AuthenticatedAccountIndexRoute
   '/_authenticated/owner/': typeof AuthenticatedOwnerIndexRoute
 }
@@ -348,6 +358,7 @@ export interface FileRouteTypes {
     | '/owner/reports'
     | '/owner/settings'
     | '/owner/staff'
+    | '/owner/suppliers'
     | '/account/'
     | '/owner/'
   fileRoutesByTo: FileRoutesByTo
@@ -380,6 +391,7 @@ export interface FileRouteTypes {
     | '/owner/reports'
     | '/owner/settings'
     | '/owner/staff'
+    | '/owner/suppliers'
     | '/account'
     | '/owner'
   id:
@@ -414,6 +426,7 @@ export interface FileRouteTypes {
     | '/_authenticated/owner/reports'
     | '/_authenticated/owner/settings'
     | '/_authenticated/owner/staff'
+    | '/_authenticated/owner/suppliers'
     | '/_authenticated/account/'
     | '/_authenticated/owner/'
   fileRoutesById: FileRoutesById
@@ -659,6 +672,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedOwnerStaffRouteImport
       parentRoute: typeof AuthenticatedOwnerRoute
     }
+    '/_authenticated/owner/suppliers': {
+      id: '/_authenticated/owner/suppliers'
+      path: '/suppliers'
+      fullPath: '/owner/suppliers'
+      preLoaderRoute: typeof AuthenticatedOwnerSuppliersRouteImport
+      parentRoute: typeof AuthenticatedOwnerRoute
+    }
   }
 }
 
@@ -675,6 +695,7 @@ interface AuthenticatedOwnerRouteChildren {
   AuthenticatedOwnerReportsRoute: typeof AuthenticatedOwnerReportsRoute
   AuthenticatedOwnerSettingsRoute: typeof AuthenticatedOwnerSettingsRoute
   AuthenticatedOwnerStaffRoute: typeof AuthenticatedOwnerStaffRoute
+  AuthenticatedOwnerSuppliersRoute: typeof AuthenticatedOwnerSuppliersRoute
   AuthenticatedOwnerIndexRoute: typeof AuthenticatedOwnerIndexRoute
 }
 
@@ -691,6 +712,7 @@ const AuthenticatedOwnerRouteChildren: AuthenticatedOwnerRouteChildren = {
   AuthenticatedOwnerReportsRoute: AuthenticatedOwnerReportsRoute,
   AuthenticatedOwnerSettingsRoute: AuthenticatedOwnerSettingsRoute,
   AuthenticatedOwnerStaffRoute: AuthenticatedOwnerStaffRoute,
+  AuthenticatedOwnerSuppliersRoute: AuthenticatedOwnerSuppliersRoute,
   AuthenticatedOwnerIndexRoute: AuthenticatedOwnerIndexRoute,
 }
 
