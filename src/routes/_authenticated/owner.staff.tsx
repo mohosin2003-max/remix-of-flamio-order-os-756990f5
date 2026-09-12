@@ -8,6 +8,7 @@ import { toast } from "sonner";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
+import { Checkbox } from "@/components/ui/checkbox";
 import { EmptyState } from "@/components/ui/states";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -20,11 +21,17 @@ import {
 } from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
+  PERMISSION_HINTS,
+  PERMISSION_LABELS,
+  STAFF_PERMISSIONS,
+} from "@/lib/permissions";
+import {
   ownerCreateInvite,
   ownerDeleteInvite,
   ownerFindAccount,
   ownerListStaff,
   ownerRevokeStaff,
+  ownerSetStaffPermissions,
   ownerSetStaffRole,
 } from "@/lib/staff.functions";
 import type { StaffRole } from "@/lib/staff.functions";
@@ -46,12 +53,14 @@ function OwnerStaff() {
   const createInvite = useServerFn(ownerCreateInvite);
   const deleteInvite = useServerFn(ownerDeleteInvite);
   const findAccount = useServerFn(ownerFindAccount);
+  const setPermissions = useServerFn(ownerSetStaffPermissions);
   const queryClient = useQueryClient();
 
   const [invitePhone, setInvitePhone] = useState("");
   const [inviteNote, setInviteNote] = useState("");
   const [inviteRole, setInviteRole] = useState<StaffRole>("staff");
   const [busy, setBusy] = useState(false);
+  const [savingFor, setSavingFor] = useState<string | null>(null);
 
   const staff = useQuery({ queryKey: ["owner-staff"], queryFn: () => listStaff() });
 
