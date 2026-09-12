@@ -49,6 +49,7 @@ function OwnerPurchases() {
   const listPurchases = useServerFn(ownerListPurchases);
   const listInventory = useServerFn(ownerListInventory);
   const createPurchase = useServerFn(ownerCreatePurchase);
+  const listSuppliers = useServerFn(ownerListSuppliers);
   const queryClient = useQueryClient();
 
   const [saving, setSaving] = useState(false);
