@@ -72,6 +72,7 @@ function OwnerPurchases() {
 
   const items = inventory.data?.items ?? [];
   const rows = purchases.data ?? [];
+  const supplierNames = (suppliers.data ?? []).filter((s) => s.isActive).map((s) => s.name);
 
   const quantity = Number(form.quantity) || 0;
   const unitPrice = Number(form.unitPrice) || 0;
