@@ -195,8 +195,8 @@ export const ownerGetCatalog = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
   .handler(
     async ({ context }): Promise<{ categories: OwnerCategory[]; products: OwnerProduct[] }> => {
-      const { assertPermission } = await import("@/lib/owner.server");
-      await assertPermission(context.userId, "menu");
+      const { assertAnyPermission } = await import("@/lib/owner.server");
+      await assertAnyPermission(context.userId, ["menu", "pos"]);
       const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
 
       const [{ data: categories }, { data: products }, { data: images }] = await Promise.all([

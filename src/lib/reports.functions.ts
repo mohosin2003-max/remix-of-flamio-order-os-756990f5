@@ -190,7 +190,7 @@ export const ownerListCustomers = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
   .handler(async ({ context }): Promise<CrmCustomer[]> => {
     const { assertPermission } = await import("@/lib/owner.server");
-    await assertPermission(context.userId, "reports");
+    await assertPermission(context.userId, "customers");
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
 
     const { data, error } = await supabaseAdmin
@@ -270,7 +270,7 @@ export const ownerSendPromotion = createServerFn({ method: "POST" })
   )
   .handler(async ({ data, context }) => {
     const { assertPermission } = await import("@/lib/owner.server");
-    await assertPermission(context.userId, "reports");
+    await assertPermission(context.userId, "customers");
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
 
     const { data: orders, error } = await supabaseAdmin
