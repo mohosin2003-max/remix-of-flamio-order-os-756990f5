@@ -354,22 +354,16 @@ export const ownerSetStaffPermissions = createServerFn({ method: "POST" })
     const { error: delError } = await supabaseAdmin
       .from("staff_permissions")
       .delete()
-      .eq("user_id", data.userId)
-      .not("permission", "in", `(${wanted.length ? wanted.join(",") : "none"})`);
+      .eq("user_id", data.userId);
     if (delError) {
       console.error("Permission cleanup failed", delError);
       throw new Error("We couldn't update this person's access. Please try again.");
     }
 
     if (wanted.length) {
-      const { error } = await supabaseAdmin.from("staff_permissions").upsert(
-        wanted.map((permission) => ({
-          user_id: data.userId,
-          permission,
-          granted_by: context.userId,
-        })),
-        { onConflict: "user_id,permission" },
-      );
+      const { error } = await supabaseAdmin
+        .from("staff_permissions")
+        .insert(wanted.map((permission) => ({ user_id: data.userId, permission })));
       if (error) {
         console.error("Grant permissions failed", error);
         throw new Error("We couldn't update this person's access. Please try again.");
