@@ -38,7 +38,7 @@ function pinIcon(color: string) {
   });
 }
 
-function ClickCatcher({ onPick }: { onPick?: (lat: number, lng: number) => void }) {
+function ClickCatcher({ onPick }: { onPick?: ((lat: number, lng: number) => void) | undefined }) {
   useMapEvents({
     click(e) {
       onPick?.(e.latlng.lat, e.latlng.lng);
