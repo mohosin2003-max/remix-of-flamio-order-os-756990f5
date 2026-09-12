@@ -27,7 +27,11 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Textarea } from "@/components/ui/textarea";
 import { formatBDT } from "@/lib/format";
 import { ownerListInventory } from "@/lib/inventory.functions";
-import { ownerCreatePurchase, ownerListPurchases } from "@/lib/purchases.functions";
+import {
+  ownerCreatePurchase,
+  ownerListPurchases,
+  type PurchaseRecord,
+} from "@/lib/purchases.functions";
 
 /**
  * Owner → Purchases. Reuses the existing purchases server functions, which
