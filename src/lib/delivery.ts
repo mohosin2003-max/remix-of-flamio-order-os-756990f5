@@ -1,7 +1,11 @@
 import { queryOptions } from "@tanstack/react-query";
 
 import { deliverySettings, deliveryZones } from "@/data/delivery";
-import { getDeliveryZones } from "@/lib/delivery.functions";
+import {
+  getDeliveryOrigin,
+  getDeliveryZones,
+  type DeliveryOriginRecord,
+} from "@/lib/delivery.functions";
 import type {
   DeliveryQuote,
   DeliverySettings,
