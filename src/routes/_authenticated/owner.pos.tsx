@@ -33,6 +33,7 @@ function OwnerPos() {
   const queryClient = useQueryClient();
 
   const [lines, setLines] = useState<Record<string, number>>({});
+  const [activeCategory, setActiveCategory] = useState<string | null>(null);
   const [customerName, setCustomerName] = useState("Walk-in customer");
   const [customerPhone, setCustomerPhone] = useState("");
   const [saving, setSaving] = useState(false);
