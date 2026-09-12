@@ -640,9 +640,223 @@ function OwnerMenu() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      <VariantDialog
+        product={variantProduct}
+        onClose={() => setVariantProduct(null)}
+        onChanged={invalidate}
+      />
     </div>
   );
 }
+
+type VariantDraft = { id: string | null; name: string; price: string; isAvailable: boolean };
+
+function VariantDialog({
+  product,
+  onClose,
+  onChanged,
+}: {
+  product: OwnerProduct | null;
+  onClose: () => void;
+  onChanged: () => Promise<void>;
+}) {
+  const listVariants = useServerFn(ownerListVariants);
+  const saveVariant = useServerFn(ownerSaveVariant);
+  const deleteVariant = useServerFn(ownerDeleteVariant);
+  const queryClient = useQueryClient();
+  const [draft, setDraft] = useState<VariantDraft | null>(null);
+  const [saving, setSaving] = useState(false);
+
+  const productId = product?.id ?? null;
+
+  const variants = useQuery({
+    queryKey: ["owner-variants", productId],
+    queryFn: () => listVariants({ data: { productId: productId as string } }),
+    enabled: productId !== null,
+  });
+
+  const refresh = async () => {
+    await queryClient.invalidateQueries({ queryKey: ["owner-variants", productId] });
+    await onChanged();
+  };
+
+  return (
+    <Dialog
+      open={product !== null}
+      onOpenChange={(open) => {
+        if (!open) {
+          setDraft(null);
+          onClose();
+        }
+      }}
+    >
+      <DialogContent className="max-h-[85vh] overflow-y-auto">
+        <DialogHeader>
+          <DialogTitle>Options for {product?.name}</DialogTitle>
+        </DialogHeader>
+
+        <p className="text-sm text-muted-foreground">
+          Sizes or options with their own price (for example Small / Medium / Large). With no
+          options, the item keeps its current price of{" "}
+          {product ? formatBDT(product.basePrice) : ""}.
+        </p>
+
+        {variants.isLoading ? (
+          <Skeleton className="h-20 w-full" />
+        ) : variants.error ? (
+          <p className="text-sm text-destructive">Couldn&apos;t load the options.</p>
+        ) : (variants.data ?? []).length === 0 ? (
+          <p className="text-sm text-muted-foreground">No options yet.</p>
+        ) : (
+          <ul className="divide-y divide-border">
+            {(variants.data ?? []).map((variant) => (
+              <li key={variant.id} className="flex items-center justify-between gap-2 py-2">
+                <div className="min-w-0">
+                  <p className="truncate font-medium">{variant.name}</p>
+                  <p className="text-sm text-muted-foreground">{formatBDT(variant.price)}</p>
+                </div>
+                <div className="flex items-center gap-1">
+                  <Switch
+                    checked={variant.isAvailable}
+                    onCheckedChange={async (value) => {
+                      try {
+                        await saveVariant({
+                          data: {
+                            id: variant.id,
+                            productId: variant.productId,
+                            name: variant.name,
+                            price: variant.price,
+                            isAvailable: value,
+                            sortOrder: variant.sortOrder,
+                          },
+                        });
+                        await refresh();
+                      } catch {
+                        toast.error("Couldn't update this option");
+                      }
+                    }}
+                  />
+                  <Button
+                    size="icon"
+                    variant="ghost"
+                    onClick={() =>
+                      setDraft({
+                        id: variant.id,
+                        name: variant.name,
+                        price: String(variant.price),
+                        isAvailable: variant.isAvailable,
+                      })
+                    }
+                  >
+                    <Pencil className="h-4 w-4" />
+                  </Button>
+                  <Button
+                    size="icon"
+                    variant="ghost"
+                    onClick={async () => {
+                      if (!confirm(`Delete ${variant.name}?`)) return;
+                      try {
+                        await deleteVariant({ data: { id: variant.id } });
+                        await refresh();
+                        toast.success("Option deleted");
+                      } catch (error) {
+                        toast.error(
+                          error instanceof Error ? error.message : "Couldn't delete this option",
+                        );
+                      }
+                    }}
+                  >
+                    <Trash2 className="h-4 w-4" />
+                  </Button>
+                </div>
+              </li>
+            ))}
+          </ul>
+        )}
+
+        {draft ? (
+          <div className="space-y-3 rounded-lg border border-border p-3">
+            <div className="space-y-1.5">
+              <Label>Option name</Label>
+              <Input
+                value={draft.name}
+                placeholder="Medium"
+                onChange={(event) => setDraft({ ...draft, name: event.target.value })}
+              />
+            </div>
+            <div className="space-y-1.5">
+              <Label>Price (৳)</Label>
+              <Input
+                inputMode="decimal"
+                value={draft.price}
+                onChange={(event) => setDraft({ ...draft, price: event.target.value })}
+              />
+            </div>
+            <Toggle
+              label="Available"
+              checked={draft.isAvailable}
+              onChange={(value) => setDraft({ ...draft, isAvailable: value })}
+            />
+            <div className="flex justify-end gap-2">
+              <Button variant="ghost" onClick={() => setDraft(null)}>
+                Cancel
+              </Button>
+              <Button
+                disabled={saving}
+                onClick={async () => {
+                  if (!product) return;
+                  const price = Number(draft.price);
+                  if (!draft.name.trim()) {
+                    toast.error("Add an option name");
+                    return;
+                  }
+                  if (!Number.isFinite(price) || price < 0) {
+                    toast.error("Add a valid price");
+                    return;
+                  }
+                  setSaving(true);
+                  try {
+                    await saveVariant({
+                      data: {
+                        id: draft.id,
+                        productId: product.id,
+                        name: draft.name.trim(),
+                        price,
+                        isAvailable: draft.isAvailable,
+                        sortOrder: (variants.data ?? []).length,
+                      },
+                    });
+                    setDraft(null);
+                    await refresh();
+                    toast.success("Option saved");
+                  } catch (error) {
+                    toast.error(
+                      error instanceof Error ? error.message : "Couldn't save this option",
+                    );
+                  } finally {
+                    setSaving(false);
+                  }
+                }}
+              >
+                {saving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
+                Save option
+              </Button>
+            </div>
+          </div>
+        ) : (
+          <Button
+            variant="outline"
+            onClick={() => setDraft({ id: null, name: "", price: "", isAvailable: true })}
+          >
+            <Plus className="mr-2 h-4 w-4" /> Add option
+          </Button>
+        )}
+      </DialogContent>
+    </Dialog>
+  );
+}
+
 
 function Toggle({
   label,
