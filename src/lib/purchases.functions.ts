@@ -64,7 +64,8 @@ export const ownerCreatePurchase = createServerFn({ method: "POST" })
     z
       .object({
         purchasedOn: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
-        supplierName: z.string().trim().min(2).max(80),
+        // Supplier is optional: purchases save fine without one.
+        supplierName: z.string().trim().max(80).optional().nullable(),
         itemId: z.string().uuid(),
         quantity: z.number().positive().max(1000000),
         unitPrice: z.number().nonnegative().max(1000000),
