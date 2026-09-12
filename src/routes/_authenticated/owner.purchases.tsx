@@ -515,7 +515,8 @@ function DateGroup({ date, rows }: { date: string; rows: PurchaseRecord[] }) {
                 <div className="min-w-0">
                   <p className="font-medium">{row.itemName}</p>
                   <p className="text-muted-foreground">
-                    {row.supplierName} · {row.quantity} {row.unit} × {formatBDT(row.unitPrice)}
+                    {row.supplierName?.trim() || "No supplier"} · {row.quantity} {row.unit} ×{" "}
+                    {formatBDT(row.unitPrice)}
                   </p>
                 </div>
                 <span className="font-semibold">{formatBDT(row.totalPrice)}</span>
