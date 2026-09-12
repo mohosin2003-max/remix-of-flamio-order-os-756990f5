@@ -9,6 +9,8 @@ import { Button } from "@/components/ui/button";
 import { EmptyState } from "@/components/ui/states";
 import { Skeleton } from "@/components/ui/skeleton";
 import { claimOwnership, getOwnerAccess } from "@/lib/owner.functions";
+import { hasPermission } from "@/lib/permissions";
+import type { StaffPermission } from "@/lib/permissions";
 import { cn } from "@/lib/utils";
 
 /**
@@ -155,10 +157,12 @@ function OwnerLayout() {
       </header>
 
       <nav className="mb-6 flex gap-2 overflow-x-auto pb-1">
-        {TABS.map((tab) => (
+        {TABS.filter(
+          (tab) => tab.permission === null || hasPermission(access.data, tab.permission),
+        ).map((tab) => (
           <Link
             key={tab.to}
-            to={tab.to}
+            to={tab.to as never}
             activeOptions={{ exact: tab.exact }}
             className={cn(
               "whitespace-nowrap rounded-full border border-border px-4 py-2 text-sm font-medium transition-colors",
