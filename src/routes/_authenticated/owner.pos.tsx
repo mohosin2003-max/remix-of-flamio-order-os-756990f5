@@ -13,6 +13,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Skeleton } from "@/components/ui/skeleton";
 import { formatBDT } from "@/lib/format";
+import { placeholderByCategorySlug } from "@/lib/menu-repository";
 import { placeOrder } from "@/lib/orders.functions";
 import { ownerGetCatalog } from "@/lib/owner.functions";
 
@@ -158,6 +159,10 @@ function OwnerPos() {
           <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
             {visibleProducts.map((product) => {
               const qty = lines[product.id] ?? 0;
+              const categorySlug =
+                categories.find((c) => c.id === product.categoryId)?.slug ?? "";
+              const imageUrl =
+                product.imageUrl ?? placeholderByCategorySlug[categorySlug] ?? null;
               return (
                 <Card key={product.id} className="overflow-hidden">
                   <button
@@ -166,9 +171,9 @@ function OwnerPos() {
                     aria-label={`Add one ${product.name}`}
                     onClick={() => bump(product.id, 1)}
                   >
-                    {product.imageUrl ? (
+                    {imageUrl ? (
                       <img
-                        src={product.imageUrl}
+                        src={imageUrl}
                         alt={product.name}
                         className="aspect-[4/3] w-full object-cover"
                         loading="lazy"
