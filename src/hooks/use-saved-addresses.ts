@@ -71,6 +71,8 @@ export function useSavedAddresses() {
           landmark: address.landmark,
           deliveryNotes: address.deliveryNotes,
           isDefault: address.isDefault,
+          latitude: address.latitude ?? null,
+          longitude: address.longitude ?? null,
         },
       });
       invalidate();

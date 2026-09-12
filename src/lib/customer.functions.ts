@@ -20,6 +20,8 @@ export interface SavedAddress {
   landmark: string | null;
   deliveryNotes: string | null;
   isDefault: boolean;
+  latitude: number | null;
+  longitude: number | null;
 }
 
 export interface CustomerNotification {
@@ -50,6 +52,8 @@ const addressSchema = z.object({
   landmark: z.string().trim().max(160).nullable(),
   deliveryNotes: z.string().trim().max(400).nullable(),
   isDefault: z.boolean(),
+  latitude: z.number().min(-90).max(90).nullable().default(null),
+  longitude: z.number().min(-180).max(180).nullable().default(null),
 });
 
 type AddressRow = {
@@ -63,10 +67,12 @@ type AddressRow = {
   landmark: string | null;
   delivery_notes: string | null;
   is_default: boolean;
+  latitude: number | null;
+  longitude: number | null;
 };
 
 const ADDRESS_COLUMNS =
-  "id, label, full_name, phone, address_line, area, zone_id, landmark, delivery_notes, is_default";
+  "id, label, full_name, phone, address_line, area, zone_id, landmark, delivery_notes, is_default, latitude, longitude";
 
 function toAddress(row: AddressRow): SavedAddress {
   return {
@@ -80,6 +86,8 @@ function toAddress(row: AddressRow): SavedAddress {
     landmark: row.landmark,
     deliveryNotes: row.delivery_notes,
     isDefault: row.is_default,
+    latitude: row.latitude === null ? null : Number(row.latitude),
+    longitude: row.longitude === null ? null : Number(row.longitude),
   };
 }
 
@@ -111,6 +119,8 @@ export const saveAddress = createServerFn({ method: "POST" })
       landmark: data.landmark || null,
       delivery_notes: data.deliveryNotes || null,
       is_default: data.isDefault,
+      latitude: data.latitude,
+      longitude: data.longitude,
     };
 
     // Edit in place when the row really belongs to this user; otherwise treat

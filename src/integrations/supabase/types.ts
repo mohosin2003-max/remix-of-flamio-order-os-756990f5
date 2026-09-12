@@ -112,6 +112,8 @@ export type Database = {
           is_default: boolean
           label: string | null
           landmark: string | null
+          latitude: number | null
+          longitude: number | null
           phone: string
           updated_at: string
           user_id: string
@@ -127,6 +129,8 @@ export type Database = {
           is_default?: boolean
           label?: string | null
           landmark?: string | null
+          latitude?: number | null
+          longitude?: number | null
           phone: string
           updated_at?: string
           user_id: string
@@ -142,6 +146,8 @@ export type Database = {
           is_default?: boolean
           label?: string | null
           landmark?: string | null
+          latitude?: number | null
+          longitude?: number | null
           phone?: string
           updated_at?: string
           user_id?: string
@@ -160,9 +166,12 @@ export type Database = {
           is_free_delivery_enabled: boolean
           minimum_order: number
           name: string
+          radius_max_m: number | null
+          radius_min_m: number | null
           slug: string
           sort_order: number
           updated_at: string
+          zone_type: string
         }
         Insert: {
           created_at?: string
@@ -174,9 +183,12 @@ export type Database = {
           is_free_delivery_enabled?: boolean
           minimum_order?: number
           name: string
+          radius_max_m?: number | null
+          radius_min_m?: number | null
           slug: string
           sort_order?: number
           updated_at?: string
+          zone_type?: string
         }
         Update: {
           created_at?: string
@@ -188,9 +200,12 @@ export type Database = {
           is_free_delivery_enabled?: boolean
           minimum_order?: number
           name?: string
+          radius_max_m?: number | null
+          radius_min_m?: number | null
           slug?: string
           sort_order?: number
           updated_at?: string
+          zone_type?: string
         }
         Relationships: []
       }
@@ -462,10 +477,13 @@ export type Database = {
           delivery_charge: number
           delivery_notes: string | null
           discount: number
+          distance_m: number | null
           estimated_time: string | null
           fulfillment: string
           id: string
           landmark: string | null
+          latitude: number | null
+          longitude: number | null
           payment_label: string
           payment_method: string
           pickup_note: string | null
@@ -489,10 +507,13 @@ export type Database = {
           delivery_charge?: number
           delivery_notes?: string | null
           discount?: number
+          distance_m?: number | null
           estimated_time?: string | null
           fulfillment: string
           id?: string
           landmark?: string | null
+          latitude?: number | null
+          longitude?: number | null
           payment_label: string
           payment_method: string
           pickup_note?: string | null
@@ -516,10 +537,13 @@ export type Database = {
           delivery_charge?: number
           delivery_notes?: string | null
           discount?: number
+          distance_m?: number | null
           estimated_time?: string | null
           fulfillment?: string
           id?: string
           landmark?: string | null
+          latitude?: number | null
+          longitude?: number | null
           payment_label?: string
           payment_method?: string
           pickup_note?: string | null
@@ -945,6 +969,8 @@ export type Database = {
           instagram_url: string | null
           inventory_mode: string
           is_open: boolean
+          latitude: number | null
+          longitude: number | null
           name: string
           opens_at: string | null
           phone: string | null
@@ -964,6 +990,8 @@ export type Database = {
           instagram_url?: string | null
           inventory_mode?: string
           is_open?: boolean
+          latitude?: number | null
+          longitude?: number | null
           name?: string
           opens_at?: string | null
           phone?: string | null
@@ -983,6 +1011,8 @@ export type Database = {
           instagram_url?: string | null
           inventory_mode?: string
           is_open?: boolean
+          latitude?: number | null
+          longitude?: number | null
           name?: string
           opens_at?: string | null
           phone?: string | null

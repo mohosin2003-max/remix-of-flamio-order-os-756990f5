@@ -1,7 +1,11 @@
 import { queryOptions } from "@tanstack/react-query";
 
 import { deliverySettings, deliveryZones } from "@/data/delivery";
-import { getDeliveryZones } from "@/lib/delivery.functions";
+import {
+  getDeliveryOrigin,
+  getDeliveryZones,
+  type DeliveryOriginRecord,
+} from "@/lib/delivery.functions";
 import type {
   DeliveryQuote,
   DeliverySettings,
@@ -20,8 +24,10 @@ export const deliveryQueryOptions = () =>
     queryKey: ["delivery-settings"],
     queryFn: async () => {
       let zones: DeliveryZone[] = [];
+      let origin: DeliveryOriginRecord | null = null;
       try {
-        const rows = await getDeliveryZones();
+        const [rows, originRow] = await Promise.all([getDeliveryZones(), getDeliveryOrigin()]);
+        origin = originRow;
         zones = rows.map((z) => ({
           // Orders and saved addresses store the slug as the zone id.
           id: z.slug,
@@ -32,6 +38,9 @@ export const deliveryQueryOptions = () =>
           isFreeDeliveryEnabled: z.isFreeDeliveryEnabled,
           estimatedDeliveryTime: z.estimatedDeliveryTime,
           isActive: z.isActive,
+          zoneType: z.zoneType,
+          radiusMinM: z.radiusMinM,
+          radiusMaxM: z.radiusMaxM,
         }));
       } catch (error) {
         console.error("Delivery zones unavailable, using defaults", error);
@@ -39,7 +48,7 @@ export const deliveryQueryOptions = () =>
 
       if (zones.length === 0) zones = deliveryZones.filter((z) => z.isActive);
 
-      return { settings: deliverySettings, zones: zones.filter((z) => z.isActive) };
+      return { settings: deliverySettings, zones: zones.filter((z) => z.isActive), origin };
     },
     staleTime: 5 * 60 * 1000,
   });

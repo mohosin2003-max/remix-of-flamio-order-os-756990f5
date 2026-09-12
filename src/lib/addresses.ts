@@ -54,5 +54,7 @@ export function emptyAddress(): CustomerAddress {
     landmark: null,
     deliveryNotes: null,
     isDefault: false,
+    latitude: null,
+    longitude: null,
   };
 }

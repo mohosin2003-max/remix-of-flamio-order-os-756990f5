@@ -53,6 +53,8 @@ export function useOrder(orderId: string) {
           landmark: row.landmark,
           deliveryNotes: row.deliveryNotes,
           isDefault: false,
+          latitude: null,
+          longitude: null,
         },
       };
     },

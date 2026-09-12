@@ -27,10 +27,15 @@ export interface DeliveryZoneRecord {
   estimatedDeliveryTime: string | null;
   isActive: boolean;
   sortOrder: number;
+  /** "area" keeps the original customer-picked behaviour; "radius" is matched
+   * automatically from the distance to the restaurant. */
+  zoneType: "area" | "radius";
+  radiusMinM: number | null;
+  radiusMaxM: number | null;
 }
 
 const COLUMNS =
-  "id,slug,name,delivery_charge,minimum_order,free_delivery_threshold,is_free_delivery_enabled,estimated_delivery_time,is_active,sort_order";
+  "id,slug,name,delivery_charge,minimum_order,free_delivery_threshold,is_free_delivery_enabled,estimated_delivery_time,is_active,sort_order,zone_type,radius_min_m,radius_max_m";
 
 function toRecord(row: ZoneRow): DeliveryZoneRecord {
   return {
@@ -45,6 +50,9 @@ function toRecord(row: ZoneRow): DeliveryZoneRecord {
     estimatedDeliveryTime: row.estimated_delivery_time,
     isActive: row.is_active,
     sortOrder: row.sort_order,
+    zoneType: row.zone_type === "radius" ? "radius" : "area",
+    radiusMinM: row.radius_min_m === null ? null : Number(row.radius_min_m),
+    radiusMaxM: row.radius_max_m === null ? null : Number(row.radius_max_m),
   };
 }
 
@@ -134,7 +142,16 @@ export const ownerSaveDeliveryZone = createServerFn({ method: "POST" })
         estimatedDeliveryTime: z.string().trim().max(60).nullable(),
         isActive: z.boolean(),
         sortOrder: z.number().int().min(0).max(999),
+        zoneType: z.enum(["area", "radius"]).default("area"),
+        radiusMinM: z.number().nonnegative().max(500_000).nullable().default(null),
+        radiusMaxM: z.number().positive().max(500_000).nullable().default(null),
       })
+      .refine(
+        (v) =>
+          v.zoneType !== "radius" ||
+          (v.radiusMaxM !== null && v.radiusMaxM > (v.radiusMinM ?? 0)),
+        { message: "The end distance must be larger than the start distance." },
+      )
       .parse(input),
   )
   .handler(async ({ data, context }) => {
@@ -151,6 +168,9 @@ export const ownerSaveDeliveryZone = createServerFn({ method: "POST" })
       estimated_delivery_time: data.estimatedDeliveryTime,
       is_active: data.isActive,
       sort_order: data.sortOrder,
+      zone_type: data.zoneType,
+      radius_min_m: data.zoneType === "radius" ? (data.radiusMinM ?? 0) : null,
+      radius_max_m: data.zoneType === "radius" ? data.radiusMaxM : null,
     };
 
     if (data.id) {
@@ -198,4 +218,90 @@ export const ownerDeleteDeliveryZone = createServerFn({ method: "POST" })
       throw new Error("We couldn't delete this delivery zone. Please try again.");
     }
     return { ok: true };
+  });
+
+/* ------------------------------------------------------------------ */
+/* Map-based delivery: restaurant origin + automatic distance pricing.  */
+/* Reuses the same delivery_zones rows and restaurant_settings row.     */
+/* ------------------------------------------------------------------ */
+
+export interface DeliveryOriginRecord {
+  latitude: number;
+  longitude: number;
+}
+
+/** Public: the restaurant's map location, used as the centre of the radius
+ * zones. Returns null when the owner hasn't set it yet. */
+export const getDeliveryOrigin = createServerFn({ method: "GET" }).handler(
+  async (): Promise<DeliveryOriginRecord | null> => {
+    const key = process.env["SUPABASE_PUBLISHABLE_KEY"];
+    const url = process.env["SUPABASE_URL"];
+    if (!key || !url) return null;
+
+    const supabase = createPublicClient(url, key);
+    const { data, error } = await supabase
+      .from("restaurant_settings")
+      .select("latitude, longitude")
+      .order("created_at")
+      .limit(1)
+      .maybeSingle();
+
+    if (error || !data || data.latitude === null || data.longitude === null) return null;
+    return { latitude: Number(data.latitude), longitude: Number(data.longitude) };
+  },
+);
+
+export const ownerSaveRestaurantLocation = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input: unknown) =>
+    z
+      .object({
+        latitude: z.number().min(-90).max(90),
+        longitude: z.number().min(-180).max(180),
+      })
+      .parse(input),
+  )
+  .handler(async ({ data, context }) => {
+    const { assertPermission } = await import("@/lib/owner.server");
+    await assertPermission(context.userId, "settings");
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+
+    const { data: row } = await supabaseAdmin
+      .from("restaurant_settings")
+      .select("id")
+      .order("created_at")
+      .limit(1)
+      .maybeSingle();
+
+    if (!row) throw new Error("Restaurant settings are not set up yet.");
+
+    const { error } = await supabaseAdmin
+      .from("restaurant_settings")
+      .update({ latitude: data.latitude, longitude: data.longitude })
+      .eq("id", row.id);
+
+    if (error) {
+      console.error("Restaurant location update failed", error);
+      throw new Error("We couldn't save the restaurant location. Please try again.");
+    }
+    return { ok: true };
+  });
+
+/** Public: priced preview of the delivery fee for a pinned location. The same
+ * server-side maths runs again inside `placeOrder`, so this is only a preview
+ * — it can never set the price that is charged. */
+export const quoteDeliveryForLocation = createServerFn({ method: "POST" })
+  .inputValidator((input: unknown) =>
+    z
+      .object({
+        latitude: z.number().min(-90).max(90).nullable(),
+        longitude: z.number().min(-180).max(180).nullable(),
+        subtotal: z.number().nonnegative().max(10_000_000),
+        discount: z.number().nonnegative().max(10_000_000),
+      })
+      .parse(input),
+  )
+  .handler(async ({ data }) => {
+    const { resolveLocationDelivery } = await import("@/lib/delivery.server");
+    return resolveLocationDelivery(data);
   });

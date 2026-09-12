@@ -1,11 +1,12 @@
 import { Link, createFileRoute, useNavigate } from "@tanstack/react-router";
-import { useSuspenseQuery } from "@tanstack/react-query";
+import { useQuery, useSuspenseQuery } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 import { Loader2, Pencil, Trash2 } from "lucide-react";
 
 
+import { MapPicker } from "@/components/map/MapPicker";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -18,6 +19,9 @@ import { useSavedAddresses } from "@/hooks/use-saved-addresses";
 import { paymentMethods } from "@/data/restaurant";
 import { emptyAddress } from "@/lib/addresses";
 import { deliveryQueryOptions, quoteDelivery, resolveZone } from "@/lib/delivery";
+import { quoteDeliveryForLocation } from "@/lib/delivery.functions";
+import { formatDistance, haversineMeters, pickRadiusZone } from "@/lib/geo";
+import { reverseGeocode } from "@/lib/customer-location";
 import { formatBDT } from "@/lib/format";
 import { checkCoupon } from "@/lib/coupons.functions";
 import { saveOrder, type PlacedOrder } from "@/lib/orders";
@@ -25,6 +29,9 @@ import { placeOrder } from "@/lib/orders.functions";
 import { cn } from "@/lib/utils";
 import type { CustomerAddress, FulfillmentType } from "@/types/menu";
 
+
+/** Only used before the owner has placed the restaurant on the map. */
+const MAP_FALLBACK = { lat: 24.4449, lng: 90.7766 };
 
 export const Route = createFileRoute("/checkout")({
   head: () => ({
@@ -51,6 +58,12 @@ function CheckoutPage() {
 
   const { data } = useSuspenseQuery(deliveryQueryOptions());
   const { settings, zones } = data;
+  const origin = data.origin;
+  /** Distance pricing only kicks in once the owner has both a restaurant
+   * location and at least one distance ring. Otherwise everything below stays
+   * exactly as it was. */
+  const radiusMode =
+    origin !== null && zones.some((z) => z.zoneType === "radius" && z.radiusMaxM !== null);
   const navigate = useNavigate();
 
   const submitOrder = useServerFn(placeOrder);
@@ -82,6 +95,8 @@ function CheckoutPage() {
     save: persistSavedAddress,
   } = useSavedAddresses();
   const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [point, setPoint] = useState<{ lat: number; lng: number } | null>(null);
+  const [locating, setLocating] = useState(false);
   const [form, setForm] = useState<CustomerAddress>(() => emptyAddress());
   const [addressTouched, setAddressTouched] = useState(false);
 
@@ -92,6 +107,9 @@ function CheckoutPage() {
     if (!preferred) return;
     setSelectedId(preferred.id);
     setForm(preferred);
+    if (preferred.latitude !== null && preferred.longitude !== null) {
+      setPoint({ lat: preferred.latitude, lng: preferred.longitude });
+    }
     if (preferred.zoneId) setZoneId(preferred.zoneId);
     setAddressTouched(true);
   }, [saved, addressesLoading, addressTouched]);
@@ -150,11 +168,61 @@ function CheckoutPage() {
     // Re-priced whenever the cart subtotal changes.
   }, [subtotal]);
 
-  const zone = useMemo(() => resolveZone(zones, zoneId), [zones, zoneId]);
-  const quote = useMemo(
-    () => quoteDelivery({ settings, zone, fulfillment, subtotal, discount }),
-    [settings, zone, fulfillment, subtotal],
+  /**
+   * Distance pricing. The browser only previews the fee — `placeOrder`
+   * recalculates it from the same coordinates on the server, so a tampered
+   * client can never buy cheap delivery.
+   */
+  const quoteLocation = useServerFn(quoteDeliveryForLocation);
+  const distanceM =
+    radiusMode && origin && point
+      ? haversineMeters(origin, { latitude: point.lat, longitude: point.lng })
+      : null;
+  const radiusZone = distanceM === null ? null : pickRadiusZone(zones, distanceM);
+
+  const locationQuote = useQuery({
+    queryKey: ["delivery-location-quote", point?.lat, point?.lng, subtotal, discount],
+    queryFn: () =>
+      quoteLocation({
+        data: { latitude: point!.lat, longitude: point!.lng, subtotal, discount },
+      }),
+    enabled: radiusMode && fulfillment === "delivery" && point !== null,
+  });
+
+  const zone = useMemo(
+    () => (radiusMode ? radiusZone : resolveZone(zones, zoneId)),
+    [radiusMode, radiusZone, zones, zoneId],
   );
+  const baseQuote = useMemo(
+    () => quoteDelivery({ settings, zone, fulfillment, subtotal, discount }),
+    [settings, zone, fulfillment, subtotal, discount],
+  );
+
+  const served = radiusMode ? (locationQuote.data ?? null) : null;
+  const quote =
+    served && served.radiusMode && served.available
+      ? {
+          ...baseQuote,
+          charge: served.charge,
+          estimatedTime: served.estimatedTime,
+          minimumOrder: served.minimumOrder,
+          meetsMinimumOrder: served.meetsMinimumOrder,
+          freeDeliveryThreshold: served.freeDeliveryThreshold,
+          amountToFreeDelivery: served.amountToFreeDelivery,
+          isFree: served.isFree,
+        }
+      : radiusMode && fulfillment === "delivery"
+        ? // No usable location yet: don't quote a charge we can't honour.
+          { ...baseQuote, charge: 0, estimatedTime: null }
+        : baseQuote;
+
+  const outOfRange =
+    radiusMode && fulfillment === "delivery" && (point === null || served?.available === false);
+  const outOfRangeMessage =
+    point === null
+      ? "Choose your delivery location on the map to see the delivery charge."
+      : (served?.message ?? "Sorry, we don't deliver to that location yet.");
+
   const grandTotal = Math.max(subtotal - discount, 0) + quote.charge;
 
   if (isHydrated && lines.length === 0 && !placed) {
@@ -177,7 +245,7 @@ function CheckoutPage() {
   }
 
   const isDelivery = fulfillment === "delivery";
-  const blocked = isDelivery && !quote.meetsMinimumOrder;
+  const blocked = isDelivery && (!quote.meetsMinimumOrder || outOfRange);
 
   return (
     <div className="mx-auto w-full max-w-5xl px-4 py-8 pb-32 sm:px-6 sm:py-12">
@@ -195,6 +263,10 @@ function CheckoutPage() {
             toast.error(message);
           };
 
+          if (isDelivery && outOfRange) {
+            fail(outOfRangeMessage);
+            return;
+          }
           if (blocked) {
             fail(`Minimum order for delivery is ${formatBDT(quote.minimumOrder)}`);
             return;
@@ -218,7 +290,13 @@ function CheckoutPage() {
             return;
           }
 
-          const record: CustomerAddress = { ...form, zoneId, isDefault: saved.length === 0 };
+          const record: CustomerAddress = {
+            ...form,
+            zoneId: radiusMode ? (zone?.id ?? null) : zoneId,
+            latitude: isDelivery ? (point?.lat ?? null) : null,
+            longitude: isDelivery ? (point?.lng ?? null) : null,
+            isDefault: saved.length === 0,
+          };
           if (isDelivery) {
             try {
               await persistSavedAddress(record);
@@ -242,8 +320,10 @@ function CheckoutPage() {
                 area: form.area?.trim() || null,
                 landmark: form.landmark?.trim() || null,
                 deliveryNotes: form.deliveryNotes?.trim() || null,
-                zoneId: isDelivery ? zoneId : null,
+                zoneId: isDelivery ? (radiusMode ? (zone?.id ?? null) : zoneId) : null,
                 zoneName: isDelivery ? (zone?.name ?? null) : null,
+                latitude: isDelivery ? (point?.lat ?? null) : null,
+                longitude: isDelivery ? (point?.lng ?? null) : null,
                 estimatedTime: quote.estimatedTime,
                 pickupNote: settings.pickupNote,
                 subtotal,
@@ -389,6 +469,9 @@ function CheckoutPage() {
                           setSelectedId(a.id);
                           setAddressTouched(true);
                           setForm(a);
+                          if (a.latitude !== null && a.longitude !== null) {
+                            setPoint({ lat: a.latitude, lng: a.longitude });
+                          }
                           if (a.zoneId) setZoneId(a.zoneId);
                         }}
                       >
@@ -470,7 +553,88 @@ function CheckoutPage() {
 
             {isDelivery ? (
               <>
-                {zones.length > 0 ? (
+                <div className="space-y-2">
+                  <Label>Delivery location on the map</Label>
+                  <p className="text-xs text-muted-foreground">
+                    Tap the map or drag the pin to where you want your order delivered.
+                  </p>
+                  <MapPicker
+                    center={
+                      point ??
+                      (origin ? { lat: origin.latitude, lng: origin.longitude } : MAP_FALLBACK)
+                    }
+                    marker={point}
+                    origin={origin ? { lat: origin.latitude, lng: origin.longitude } : null}
+                    height={280}
+                    zoom={point || origin ? 15 : 12}
+                    onPick={(lat, lng) => setPoint({ lat, lng })}
+                  />
+                  <div className="flex flex-wrap items-center gap-2">
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      disabled={locating}
+                      onClick={() => {
+                        if (!navigator.geolocation) {
+                          toast.error("Your device can't share its location.");
+                          return;
+                        }
+                        setLocating(true);
+                        navigator.geolocation.getCurrentPosition(
+                          async (pos) => {
+                            const lat = pos.coords.latitude;
+                            const lng = pos.coords.longitude;
+                            setPoint({ lat, lng });
+                            try {
+                              const label = await reverseGeocode(lat, lng);
+                              if (label) {
+                                setForm((current) =>
+                                  current.addressLine.trim()
+                                    ? current
+                                    : { ...current, addressLine: label },
+                                );
+                              }
+                            } catch {
+                              /* the map pin is enough on its own */
+                            }
+                            setLocating(false);
+                          },
+                          () => {
+                            setLocating(false);
+                            toast.error(
+                              "We couldn't get your location. Please pick it on the map instead.",
+                            );
+                          },
+                        );
+                      }}
+                    >
+                      {locating ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
+                      Use my current location
+                    </Button>
+                    {point ? (
+                      <span className="text-xs text-muted-foreground">
+                        Selected: {point.lat.toFixed(5)}, {point.lng.toFixed(5)}
+                        {distanceM !== null ? ` · ${formatDistance(distanceM)} away` : ""}
+                      </span>
+                    ) : null}
+                  </div>
+                  {radiusMode && outOfRange ? (
+                    <p
+                      role="alert"
+                      className="rounded-lg border border-destructive/40 bg-destructive/10 px-3 py-2 text-sm text-destructive"
+                    >
+                      {outOfRangeMessage}
+                    </p>
+                  ) : null}
+                  {radiusMode && zone && !outOfRange ? (
+                    <p className="text-xs text-muted-foreground">
+                      Delivery area: {zone.name} · {formatBDT(quote.charge)}
+                      {quote.estimatedTime ? ` · ${quote.estimatedTime}` : ""}
+                    </p>
+                  ) : null}
+                </div>
+                {!radiusMode && zones.length > 0 ? (
                   <div className="space-y-2">
                     <Label>Delivery area</Label>
                     <div className="flex flex-wrap gap-2">
@@ -683,6 +847,11 @@ function CheckoutPage() {
               Add {formatBDT(quote.amountToFreeDelivery)} more for free delivery.
             </p>
           ) : null}
+          {isDelivery && distanceM !== null ? (
+            <p className="mt-1 text-xs text-muted-foreground">
+              Distance from the restaurant: {formatDistance(distanceM)}
+            </p>
+          ) : null}
           {isDelivery && quote.estimatedTime ? (
             <p className="mt-1 text-xs text-muted-foreground">
               Estimated delivery: {quote.estimatedTime}
@@ -690,7 +859,9 @@ function CheckoutPage() {
           ) : null}
           {blocked ? (
             <p className="mt-2 text-xs text-destructive">
-              Minimum order for delivery is {formatBDT(quote.minimumOrder)}.
+              {outOfRange
+                ? outOfRangeMessage
+                : `Minimum order for delivery is ${formatBDT(quote.minimumOrder)}.`}
             </p>
           ) : null}
 

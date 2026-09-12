@@ -17,6 +17,9 @@ export const deliveryZones: DeliveryZone[] = [
     isFreeDeliveryEnabled: true,
     estimatedDeliveryTime: "30–45 min",
     isActive: true,
+    zoneType: "area",
+    radiusMinM: null,
+    radiusMaxM: null,
   },
 ];
 
