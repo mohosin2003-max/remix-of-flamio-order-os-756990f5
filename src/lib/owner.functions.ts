@@ -24,6 +24,8 @@ export interface OwnerOrderRow {
   addressLine: string | null;
   area: string | null;
   paymentLabel: string;
+  riderId: string | null;
+  riderName: string | null;
 }
 
 export interface OwnerCategory {
