@@ -84,7 +84,7 @@ export const ownerCreatePurchase = createServerFn({ method: "POST" })
       .from("purchases")
       .insert({
         purchased_on: data.purchasedOn,
-        supplier_name: data.supplierName,
+        supplier_name: supplierName,
         item_id: data.itemId,
         quantity: data.quantity,
         unit_price: data.unitPrice,
