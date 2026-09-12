@@ -266,6 +266,56 @@ function OwnerDelivery() {
   return (
     <div className="space-y-6">
       <Card>
+        <CardContent className="space-y-3 p-4">
+          <h2 className="font-display text-base font-bold">Restaurant location</h2>
+          <p className="text-sm text-muted-foreground">
+            Tap the map to place your restaurant. Distance rings are measured from this point.
+          </p>
+          <MapPicker
+            center={mapCenter}
+            marker={null}
+            origin={mapPin}
+            circles={circles}
+            height={300}
+            zoom={savedOrigin ? 14 : 12}
+            onPick={(lat, lng) => setPin({ lat, lng })}
+          />
+          <div className="flex flex-wrap items-center gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => {
+                if (!navigator.geolocation) {
+                  toast.error("Your device can't share its location.");
+                  return;
+                }
+                navigator.geolocation.getCurrentPosition(
+                  (pos) => setPin({ lat: pos.coords.latitude, lng: pos.coords.longitude }),
+                  () => toast.error("We couldn't get your current location."),
+                );
+              }}
+            >
+              Use my current location
+            </Button>
+            <Button disabled={!pin || savingPin} onClick={() => void saveLocation()}>
+              {savingPin ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
+              Save location
+            </Button>
+            {pin ? (
+              <Button variant="ghost" size="sm" onClick={() => setPin(null)}>
+                Reset
+              </Button>
+            ) : null}
+          </div>
+          <p className="text-xs text-muted-foreground">
+            {savedOrigin
+              ? `Saved: ${savedOrigin.latitude.toFixed(5)}, ${savedOrigin.longitude.toFixed(5)}`
+              : "Not set yet — distance-based delivery stays off until you save a location."}
+          </p>
+        </CardContent>
+      </Card>
+
+      <Card>
         <CardContent className="space-y-4 p-4">
           <h2 className="font-display text-base font-bold">
             {form.id ? "Edit delivery zone" : "New delivery zone"}
@@ -280,6 +330,49 @@ function OwnerDelivery() {
                 onChange={(e) => setForm({ ...form, name: e.target.value })}
               />
             </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="dz-type">Zone type</Label>
+              <select
+                id="dz-type"
+                className="h-10 w-full rounded-md border border-input bg-background px-3 text-sm"
+                value={form.zoneType}
+                onChange={(e) =>
+                  setForm({ ...form, zoneType: e.target.value === "radius" ? "radius" : "area" })
+                }
+              >
+                <option value="area">Named area (customer picks)</option>
+                <option value="radius">Distance from restaurant (automatic)</option>
+              </select>
+            </div>
+            {form.zoneType === "radius" ? (
+              <>
+                <div className="space-y-1.5">
+                  <Label htmlFor="dz-rmin">From distance (metres)</Label>
+                  <Input
+                    id="dz-rmin"
+                    type="number"
+                    min="0"
+                    step="10"
+                    inputMode="numeric"
+                    value={form.radiusMinM}
+                    onChange={(e) => setForm({ ...form, radiusMinM: e.target.value })}
+                  />
+                </div>
+                <div className="space-y-1.5">
+                  <Label htmlFor="dz-rmax">To distance (metres)</Label>
+                  <Input
+                    id="dz-rmax"
+                    type="number"
+                    min="1"
+                    step="10"
+                    inputMode="numeric"
+                    placeholder="1000"
+                    value={form.radiusMaxM}
+                    onChange={(e) => setForm({ ...form, radiusMaxM: e.target.value })}
+                  />
+                </div>
+              </>
+            ) : null}
             <div className="space-y-1.5">
               <Label htmlFor="dz-charge">Delivery charge</Label>
               <Input
