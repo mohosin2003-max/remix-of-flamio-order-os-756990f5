@@ -449,6 +449,11 @@ function OwnerDelivery() {
               />
             </div>
           </div>
+          {overlapWarning ? (
+            <p className="rounded-lg border border-amber-500/40 bg-amber-500/10 px-3 py-2 text-xs text-amber-700 dark:text-amber-400">
+              {overlapWarning}
+            </p>
+          ) : null}
           <div className="flex flex-wrap gap-2">
             <Button disabled={saving} onClick={() => void submit()}>
               {saving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
@@ -466,8 +471,9 @@ function OwnerDelivery() {
       <div className="space-y-3">
         <h2 className="font-display text-base font-bold">Delivery zones</h2>
         <p className="text-sm text-muted-foreground">
-          Customers pick an active zone at checkout. If no zone matches, the default delivery
-          charge is used.
+          Distance zones are matched automatically from the customer's map pin. Named areas stay
+          as they are — the customer picks one at checkout. If no zone matches, the default
+          delivery charge is used.
         </p>
         {rows.length === 0 ? (
           <EmptyState
@@ -484,8 +490,14 @@ function OwnerDelivery() {
                     <Badge variant={z.isActive ? "default" : "secondary"}>
                       {z.isActive ? "Active" : "Inactive"}
                     </Badge>
+                    <Badge variant="outline">
+                      {z.zoneType === "radius" ? "Distance" : "Area"}
+                    </Badge>
                   </div>
                   <p className="mt-1 text-sm text-muted-foreground">
+                    {z.zoneType === "radius" && z.radiusMaxM !== null
+                      ? `${formatDistance(z.radiusMinM ?? 0)}–${formatDistance(z.radiusMaxM)} · `
+                      : ""}
                     {formatBDT(z.deliveryCharge)} delivery
                     {z.minimumOrder > 0 ? ` · min ${formatBDT(z.minimumOrder)}` : ""}
                     {z.isFreeDeliveryEnabled && z.freeDeliveryThreshold !== null
