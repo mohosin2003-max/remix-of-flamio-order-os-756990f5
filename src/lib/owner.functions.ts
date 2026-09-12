@@ -24,6 +24,8 @@ export interface OwnerOrderRow {
   addressLine: string | null;
   area: string | null;
   paymentLabel: string;
+  riderId: string | null;
+  riderName: string | null;
 }
 
 export interface OwnerCategory {
@@ -125,7 +127,7 @@ export const ownerListOrders = createServerFn({ method: "GET" })
     const { data, error } = await supabaseAdmin
       .from("orders")
       .select(
-        "id, code, status, fulfillment, customer_name, customer_phone, total, created_at, address_line, area, payment_label",
+        "id, code, status, fulfillment, customer_name, customer_phone, total, created_at, address_line, area, payment_label, rider_id, riders(name)",
       )
       .order("created_at", { ascending: false })
       .limit(100);
@@ -147,6 +149,8 @@ export const ownerListOrders = createServerFn({ method: "GET" })
       addressLine: o.address_line,
       area: o.area,
       paymentLabel: o.payment_label,
+      riderId: o.rider_id,
+      riderName: o.riders?.name ?? null,
     }));
   });
 

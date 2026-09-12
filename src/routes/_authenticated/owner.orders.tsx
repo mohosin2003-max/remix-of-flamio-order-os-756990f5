@@ -17,6 +17,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { ownerListOrders, ownerUpdateOrderStatus } from "@/lib/owner.functions";
+import { ownerAssignRider, ownerListRiders } from "@/lib/riders.functions";
 import { formatBDT } from "@/lib/format";
 import { statusLabel } from "@/lib/order-status";
 
@@ -37,14 +38,24 @@ const STATUSES = [
 function OwnerOrders() {
   const listOrders = useServerFn(ownerListOrders);
   const updateStatus = useServerFn(ownerUpdateOrderStatus);
+  const listRiders = useServerFn(ownerListRiders);
+  const assignRider = useServerFn(ownerAssignRider);
   const queryClient = useQueryClient();
   const [pending, setPending] = useState<string | null>(null);
+  const [riderPending, setRiderPending] = useState<string | null>(null);
 
   const orders = useQuery({
     queryKey: ["owner-orders"],
     queryFn: () => listOrders(),
     refetchInterval: 20_000,
   });
+
+  const riders = useQuery({
+    queryKey: ["owner-riders"],
+    queryFn: () => listRiders(),
+  });
+
+  const activeRiders = (riders.data ?? []).filter((r) => r.isActive);
 
   if (orders.isLoading) {
     return (
@@ -133,6 +144,49 @@ function OwnerOrders() {
                 </SelectContent>
               </Select>
             </div>
+
+            {order.fulfillment === "delivery" ? (
+              <div className="flex flex-wrap items-center gap-2">
+                <span className="text-xs text-muted-foreground">Rider</span>
+                <Select
+                  value={order.riderId ?? "none"}
+                  disabled={riderPending === order.id}
+                  onValueChange={async (value) => {
+                    setRiderPending(order.id);
+                    try {
+                      await assignRider({
+                        data: { orderId: order.id, riderId: value === "none" ? null : value },
+                      });
+                      await queryClient.invalidateQueries({ queryKey: ["owner-orders"] });
+                      toast.success(value === "none" ? "Rider cleared" : "Rider assigned");
+                    } catch (error) {
+                      toast.error(
+                        error instanceof Error ? error.message : "Couldn't assign this rider",
+                      );
+                    } finally {
+                      setRiderPending(null);
+                    }
+                  }}
+                >
+                  <SelectTrigger className="h-9 w-[190px]">
+                    <SelectValue placeholder="Assign rider" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="none">No rider</SelectItem>
+                    {activeRiders.map((rider) => (
+                      <SelectItem key={rider.id} value={rider.id}>
+                        {rider.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                {activeRiders.length === 0 ? (
+                  <span className="text-xs text-muted-foreground">
+                    Add riders in the Riders tab
+                  </span>
+                ) : null}
+              </div>
+            ) : null}
           </CardContent>
         </Card>
       ))}

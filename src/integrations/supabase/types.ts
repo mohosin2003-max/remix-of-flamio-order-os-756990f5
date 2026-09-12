@@ -469,6 +469,7 @@ export type Database = {
           payment_label: string
           payment_method: string
           pickup_note: string | null
+          rider_id: string | null
           status: string
           subtotal: number
           total: number
@@ -495,6 +496,7 @@ export type Database = {
           payment_label: string
           payment_method: string
           pickup_note?: string | null
+          rider_id?: string | null
           status?: string
           subtotal?: number
           total?: number
@@ -521,6 +523,7 @@ export type Database = {
           payment_label?: string
           payment_method?: string
           pickup_note?: string | null
+          rider_id?: string | null
           status?: string
           subtotal?: number
           total?: number
@@ -529,7 +532,15 @@ export type Database = {
           zone_id?: string | null
           zone_name?: string | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "orders_rider_id_fkey"
+            columns: ["rider_id"]
+            isOneToOne: false
+            referencedRelation: "riders"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       owner_invites: {
         Row: {
@@ -931,6 +942,36 @@ export type Database = {
           opens_at?: string | null
           phone?: string | null
           tagline?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      riders: {
+        Row: {
+          created_at: string
+          id: string
+          is_active: boolean
+          name: string
+          note: string | null
+          phone: string | null
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          name: string
+          note?: string | null
+          phone?: string | null
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          name?: string
+          note?: string | null
+          phone?: string | null
           updated_at?: string
         }
         Relationships: []
