@@ -36,8 +36,8 @@ export const ownerGetSalesReport = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((input: unknown) => rangeSchema.parse(input))
   .handler(async ({ data, context }): Promise<SalesReport> => {
-    const { assertOwner } = await import("@/lib/owner.server");
-    await assertOwner(context.userId);
+    const { assertPermission } = await import("@/lib/owner.server");
+    await assertPermission(context.userId, "reports");
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
 
     const fromIso = `${data.from}T00:00:00.000Z`;
@@ -189,8 +189,8 @@ function maskPhone(phone: string): string {
 export const ownerListCustomers = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
   .handler(async ({ context }): Promise<CrmCustomer[]> => {
-    const { assertOwner } = await import("@/lib/owner.server");
-    await assertOwner(context.userId);
+    const { assertPermission } = await import("@/lib/owner.server");
+    await assertPermission(context.userId, "reports");
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
 
     const { data, error } = await supabaseAdmin
@@ -269,8 +269,8 @@ export const ownerSendPromotion = createServerFn({ method: "POST" })
       .parse(input),
   )
   .handler(async ({ data, context }) => {
-    const { assertOwner } = await import("@/lib/owner.server");
-    await assertOwner(context.userId);
+    const { assertPermission } = await import("@/lib/owner.server");
+    await assertPermission(context.userId, "reports");
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
 
     const { data: orders, error } = await supabaseAdmin

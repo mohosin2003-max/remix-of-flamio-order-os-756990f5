@@ -46,8 +46,8 @@ export const ownerListStaff = createServerFn({ method: "GET" })
     async ({
       context,
     }): Promise<{ members: StaffMember[]; invites: StaffInvite[]; me: string }> => {
-      const { assertOwner } = await import("@/lib/owner.server");
-      await assertOwner(context.userId);
+      const { assertPermission } = await import("@/lib/owner.server");
+      await assertPermission(context.userId, "staff");
       const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
 
       const [{ data: roleRows }, { data: inviteRows }] = await Promise.all([
@@ -137,8 +137,8 @@ export const ownerCreateInvite = createServerFn({ method: "POST" })
       .parse(input),
   )
   .handler(async ({ data, context }) => {
-    const { assertOwner } = await import("@/lib/owner.server");
-    await assertOwner(context.userId);
+    const { assertPermission } = await import("@/lib/owner.server");
+    await assertPermission(context.userId, "staff");
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
 
     const { error } = await supabaseAdmin
@@ -156,8 +156,8 @@ export const ownerDeleteInvite = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((input: unknown) => z.object({ id: z.string().uuid() }).parse(input))
   .handler(async ({ data, context }) => {
-    const { assertOwner } = await import("@/lib/owner.server");
-    await assertOwner(context.userId);
+    const { assertPermission } = await import("@/lib/owner.server");
+    await assertPermission(context.userId, "staff");
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
 
     const { error } = await supabaseAdmin.from("owner_invites").delete().eq("id", data.id);
@@ -175,8 +175,8 @@ export const ownerSetStaffRole = createServerFn({ method: "POST" })
     z.object({ userId: z.string().uuid(), role: rolesEnum }).parse(input),
   )
   .handler(async ({ data, context }) => {
-    const { assertOwner } = await import("@/lib/owner.server");
-    await assertOwner(context.userId);
+    const { assertPermission } = await import("@/lib/owner.server");
+    await assertPermission(context.userId, "staff");
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
 
     // Only a full owner may create or change another owner.
@@ -238,8 +238,8 @@ export const ownerRevokeStaff = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((input: unknown) => z.object({ userId: z.string().uuid() }).parse(input))
   .handler(async ({ data, context }) => {
-    const { assertOwner } = await import("@/lib/owner.server");
-    await assertOwner(context.userId);
+    const { assertPermission } = await import("@/lib/owner.server");
+    await assertPermission(context.userId, "staff");
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
 
     if (data.userId === context.userId) {
@@ -290,8 +290,8 @@ export const ownerFindAccount = createServerFn({ method: "POST" })
       data,
       context,
     }): Promise<{ userId: string; fullName: string | null; phone: string | null } | null> => {
-      const { assertOwner } = await import("@/lib/owner.server");
-      await assertOwner(context.userId);
+      const { assertPermission } = await import("@/lib/owner.server");
+      await assertPermission(context.userId, "staff");
       const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
 
       const value = normalizePhone(data.query);
