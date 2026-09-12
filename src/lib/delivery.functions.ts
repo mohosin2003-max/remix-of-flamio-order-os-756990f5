@@ -27,10 +27,15 @@ export interface DeliveryZoneRecord {
   estimatedDeliveryTime: string | null;
   isActive: boolean;
   sortOrder: number;
+  /** "area" keeps the original customer-picked behaviour; "radius" is matched
+   * automatically from the distance to the restaurant. */
+  zoneType: "area" | "radius";
+  radiusMinM: number | null;
+  radiusMaxM: number | null;
 }
 
 const COLUMNS =
-  "id,slug,name,delivery_charge,minimum_order,free_delivery_threshold,is_free_delivery_enabled,estimated_delivery_time,is_active,sort_order";
+  "id,slug,name,delivery_charge,minimum_order,free_delivery_threshold,is_free_delivery_enabled,estimated_delivery_time,is_active,sort_order,zone_type,radius_min_m,radius_max_m";
 
 function toRecord(row: ZoneRow): DeliveryZoneRecord {
   return {
