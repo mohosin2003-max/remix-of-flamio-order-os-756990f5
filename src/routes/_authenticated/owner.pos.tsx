@@ -171,9 +171,9 @@ function OwnerPos() {
                     aria-label={`Add one ${product.name}`}
                     onClick={() => bump(product.id, 1)}
                   >
-                    {product.imageUrl ? (
+                    {imageUrl ? (
                       <img
-                        src={product.imageUrl}
+                        src={imageUrl}
                         alt={product.name}
                         className="aspect-[4/3] w-full object-cover"
                         loading="lazy"
