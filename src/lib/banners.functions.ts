@@ -97,8 +97,8 @@ export const getPromoBanners = createServerFn({ method: "GET" }).handler(
 export const ownerListPromoBanners = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
   .handler(async ({ context }): Promise<PromoBanner[]> => {
-    const { assertOwner } = await import("@/lib/owner.server");
-    await assertOwner(context.userId);
+    const { assertPermission } = await import("@/lib/owner.server");
+    await assertPermission(context.userId, "menu");
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
 
     const { data, error } = await supabaseAdmin
@@ -140,8 +140,8 @@ export const ownerSavePromoBanner = createServerFn({ method: "POST" })
       .parse(input),
   )
   .handler(async ({ data, context }) => {
-    const { assertOwner } = await import("@/lib/owner.server");
-    await assertOwner(context.userId);
+    const { assertPermission } = await import("@/lib/owner.server");
+    await assertPermission(context.userId, "menu");
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
 
     const payload = {
@@ -188,8 +188,8 @@ export const ownerDeletePromoBanner = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((input: unknown) => z.object({ id: z.string().uuid() }).parse(input))
   .handler(async ({ data, context }) => {
-    const { assertOwner } = await import("@/lib/owner.server");
-    await assertOwner(context.userId);
+    const { assertPermission } = await import("@/lib/owner.server");
+    await assertPermission(context.userId, "menu");
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
 
     const { data: existing } = await supabaseAdmin

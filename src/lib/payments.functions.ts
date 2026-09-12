@@ -48,8 +48,8 @@ const requiredSecretsFor = (slug: string): string[] =>
 export const ownerListPaymentProviders = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
   .handler(async ({ context }): Promise<PaymentProviderRow[]> => {
-    const { assertOwner } = await import("@/lib/owner.server");
-    await assertOwner(context.userId);
+    const { assertPermission } = await import("@/lib/owner.server");
+    await assertPermission(context.userId, "settings");
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
 
     const { data, error } = await supabaseAdmin
@@ -106,8 +106,8 @@ export const ownerSavePaymentProvider = createServerFn({ method: "POST" })
       .parse(input),
   )
   .handler(async ({ data, context }) => {
-    const { assertOwner } = await import("@/lib/owner.server");
-    await assertOwner(context.userId);
+    const { assertPermission } = await import("@/lib/owner.server");
+    await assertPermission(context.userId, "settings");
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
 
     const { error } = await supabaseAdmin

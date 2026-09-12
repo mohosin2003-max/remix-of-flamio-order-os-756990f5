@@ -71,26 +71,39 @@ export interface RestaurantSettings {
   googleMapsUrl: string | null;
 }
 
-/** Is the caller an owner/admin? Also reports whether ownership is unclaimed. */
+/**
+ * What can the caller open in the dashboard? Owners/managers are unrestricted;
+ * staff get exactly the permissions switched on for them. Also reports whether
+ * ownership is unclaimed.
+ */
 export const getOwnerAccess = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
   .handler(async ({ context }) => {
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { getAccessProfile } = await import("@/lib/owner.server");
 
-    const { data: mine } = await supabaseAdmin
-      .from("user_roles")
-      .select("role")
-      .eq("user_id", context.userId);
+    const [{ data: mine }, access] = await Promise.all([
+      supabaseAdmin.from("user_roles").select("role").eq("user_id", context.userId),
+      getAccessProfile(context.userId),
+    ]);
 
     const roles = (mine ?? []).map((r) => r.role as string);
-    const isOwner = roles.includes("owner") || roles.includes("admin");
 
     const { count } = await supabaseAdmin
       .from("user_roles")
       .select("id", { count: "exact", head: true })
       .eq("role", "owner");
 
-    return { isOwner, roles, canClaim: !isOwner && (count ?? 0) === 0 };
+    const hasAccess = access.isManager || access.permissions.length > 0;
+
+    return {
+      isOwner: hasAccess,
+      isManager: access.isManager,
+      isStaff: access.isStaff,
+      permissions: access.permissions as string[],
+      roles,
+      canClaim: !hasAccess && (count ?? 0) === 0,
+    };
   });
 
 /** First-run bootstrap: the first signed-in user may claim ownership once. */
@@ -120,8 +133,8 @@ export const claimOwnership = createServerFn({ method: "POST" })
 export const ownerListOrders = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
   .handler(async ({ context }): Promise<OwnerOrderRow[]> => {
-    const { assertOwner } = await import("@/lib/owner.server");
-    await assertOwner(context.userId);
+    const { assertPermission } = await import("@/lib/owner.server");
+    await assertPermission(context.userId, "online_orders");
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
 
     const { data, error } = await supabaseAdmin
@@ -174,8 +187,8 @@ export const ownerUpdateOrderStatus = createServerFn({ method: "POST" })
       .parse(input),
   )
   .handler(async ({ data, context }) => {
-    const { assertOwner } = await import("@/lib/owner.server");
-    await assertOwner(context.userId);
+    const { assertPermission } = await import("@/lib/owner.server");
+    await assertPermission(context.userId, "order_management");
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
 
     const { error } = await supabaseAdmin
@@ -195,8 +208,8 @@ export const ownerGetCatalog = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
   .handler(
     async ({ context }): Promise<{ categories: OwnerCategory[]; products: OwnerProduct[] }> => {
-      const { assertOwner } = await import("@/lib/owner.server");
-      await assertOwner(context.userId);
+      const { assertAnyPermission } = await import("@/lib/owner.server");
+      await assertAnyPermission(context.userId, ["menu", "pos"]);
       const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
 
       const [{ data: categories }, { data: products }, { data: images }] = await Promise.all([
@@ -277,8 +290,8 @@ export const ownerSaveCategory = createServerFn({ method: "POST" })
       .parse(input),
   )
   .handler(async ({ data, context }) => {
-    const { assertOwner } = await import("@/lib/owner.server");
-    await assertOwner(context.userId);
+    const { assertPermission } = await import("@/lib/owner.server");
+    await assertPermission(context.userId, "menu");
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
 
     const row = {
@@ -321,8 +334,8 @@ export const ownerDeleteCategory = createServerFn({ method: "POST" })
       .parse(input),
   )
   .handler(async ({ data, context }) => {
-    const { assertOwner } = await import("@/lib/owner.server");
-    await assertOwner(context.userId);
+    const { assertPermission } = await import("@/lib/owner.server");
+    await assertPermission(context.userId, "menu");
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
 
     const { count } = await supabaseAdmin
@@ -390,8 +403,8 @@ export const ownerSaveProduct = createServerFn({ method: "POST" })
       .parse(input),
   )
   .handler(async ({ data, context }) => {
-    const { assertOwner } = await import("@/lib/owner.server");
-    await assertOwner(context.userId);
+    const { assertPermission } = await import("@/lib/owner.server");
+    await assertPermission(context.userId, "menu");
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
 
     const row = {
@@ -465,8 +478,8 @@ export const ownerSetProductAvailability = createServerFn({ method: "POST" })
     z.object({ id: z.string().uuid(), isAvailable: z.boolean() }).parse(input),
   )
   .handler(async ({ data, context }) => {
-    const { assertOwner } = await import("@/lib/owner.server");
-    await assertOwner(context.userId);
+    const { assertPermission } = await import("@/lib/owner.server");
+    await assertPermission(context.userId, "menu");
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
 
     const { error } = await supabaseAdmin
@@ -485,8 +498,8 @@ export const ownerDeleteProduct = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((input: unknown) => z.object({ id: z.string().uuid() }).parse(input))
   .handler(async ({ data, context }) => {
-    const { assertOwner } = await import("@/lib/owner.server");
-    await assertOwner(context.userId);
+    const { assertPermission } = await import("@/lib/owner.server");
+    await assertPermission(context.userId, "menu");
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
 
     const { error } = await supabaseAdmin.from("products").delete().eq("id", data.id);
@@ -500,8 +513,8 @@ export const ownerDeleteProduct = createServerFn({ method: "POST" })
 export const ownerGetSettings = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
   .handler(async ({ context }): Promise<RestaurantSettings | null> => {
-    const { assertOwner } = await import("@/lib/owner.server");
-    await assertOwner(context.userId);
+    const { assertPermission } = await import("@/lib/owner.server");
+    await assertPermission(context.userId, "settings");
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
 
     const { data } = await supabaseAdmin
@@ -559,8 +572,8 @@ export const ownerUpdateSettings = createServerFn({ method: "POST" })
       .parse(input),
   )
   .handler(async ({ data, context }) => {
-    const { assertOwner } = await import("@/lib/owner.server");
-    await assertOwner(context.userId);
+    const { assertPermission } = await import("@/lib/owner.server");
+    await assertPermission(context.userId, "settings");
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
 
     const { error } = await supabaseAdmin
@@ -608,8 +621,8 @@ export const ownerListVariants = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((input: unknown) => z.object({ productId: z.string().uuid() }).parse(input))
   .handler(async ({ data, context }): Promise<OwnerVariant[]> => {
-    const { assertOwner } = await import("@/lib/owner.server");
-    await assertOwner(context.userId);
+    const { assertPermission } = await import("@/lib/owner.server");
+    await assertPermission(context.userId, "menu");
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
 
     const { data: rows, error } = await supabaseAdmin
@@ -648,8 +661,8 @@ export const ownerSaveVariant = createServerFn({ method: "POST" })
       .parse(input),
   )
   .handler(async ({ data, context }) => {
-    const { assertOwner } = await import("@/lib/owner.server");
-    await assertOwner(context.userId);
+    const { assertPermission } = await import("@/lib/owner.server");
+    await assertPermission(context.userId, "menu");
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
 
     const row = {
@@ -688,8 +701,8 @@ export const ownerDeleteVariant = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((input: unknown) => z.object({ id: z.string().uuid() }).parse(input))
   .handler(async ({ data, context }) => {
-    const { assertOwner } = await import("@/lib/owner.server");
-    await assertOwner(context.userId);
+    const { assertPermission } = await import("@/lib/owner.server");
+    await assertPermission(context.userId, "menu");
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
 
     const { error } = await supabaseAdmin.from("product_variants").delete().eq("id", data.id);

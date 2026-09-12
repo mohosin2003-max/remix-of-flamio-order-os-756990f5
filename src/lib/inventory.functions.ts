@@ -36,8 +36,8 @@ export const ownerListInventory = createServerFn({ method: "GET" })
     async ({
       context,
     }): Promise<{ items: InventoryItem[]; lowStockCount: number; recipes: RecipeLine[] }> => {
-      const { assertOwner } = await import("@/lib/owner.server");
-      await assertOwner(context.userId);
+      const { assertPermission } = await import("@/lib/owner.server");
+      await assertPermission(context.userId, "inventory");
       const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
 
       const [{ data: rows, error }, { data: recipeRows }] = await Promise.all([
@@ -98,8 +98,8 @@ export const ownerSaveInventoryItem = createServerFn({ method: "POST" })
       .parse(input),
   )
   .handler(async ({ data, context }) => {
-    const { assertOwner } = await import("@/lib/owner.server");
-    await assertOwner(context.userId);
+    const { assertPermission } = await import("@/lib/owner.server");
+    await assertPermission(context.userId, "inventory");
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
 
     const row = {
@@ -141,8 +141,8 @@ export const ownerAdjustStock = createServerFn({ method: "POST" })
       .parse(input),
   )
   .handler(async ({ data, context }) => {
-    const { assertOwner } = await import("@/lib/owner.server");
-    await assertOwner(context.userId);
+    const { assertPermission } = await import("@/lib/owner.server");
+    await assertPermission(context.userId, "inventory");
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
 
     const { data: newStock, error } = await supabaseAdmin.rpc("apply_stock_change", {
@@ -183,8 +183,8 @@ export const ownerSaveRecipe = createServerFn({ method: "POST" })
       .parse(input),
   )
   .handler(async ({ data, context }) => {
-    const { assertOwner } = await import("@/lib/owner.server");
-    await assertOwner(context.userId);
+    const { assertPermission } = await import("@/lib/owner.server");
+    await assertPermission(context.userId, "inventory");
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
 
     const { error: clearError } = await supabaseAdmin
@@ -229,8 +229,8 @@ export interface StockMovement {
 export const ownerListStockMovements = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
   .handler(async ({ context }): Promise<StockMovement[]> => {
-    const { assertOwner } = await import("@/lib/owner.server");
-    await assertOwner(context.userId);
+    const { assertPermission } = await import("@/lib/owner.server");
+    await assertPermission(context.userId, "inventory");
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
 
     const { data, error } = await supabaseAdmin

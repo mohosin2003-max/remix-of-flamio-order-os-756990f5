@@ -9,6 +9,8 @@ import { Button } from "@/components/ui/button";
 import { EmptyState } from "@/components/ui/states";
 import { Skeleton } from "@/components/ui/skeleton";
 import { claimOwnership, getOwnerAccess } from "@/lib/owner.functions";
+import { hasPermission } from "@/lib/permissions";
+import type { StaffPermission } from "@/lib/permissions";
 import { cn } from "@/lib/utils";
 
 /**
@@ -30,23 +32,29 @@ export const Route = createFileRoute("/_authenticated/owner")({
   component: OwnerLayout,
 });
 
-const TABS = [
-  { to: "/owner", label: "Home", exact: true },
-  { to: "/owner/orders", label: "Orders", exact: false },
-  { to: "/owner/pos", label: "Counter sale", exact: false },
-  { to: "/owner/menu", label: "Menu", exact: false },
-  { to: "/owner/inventory", label: "Inventory", exact: false },
-  { to: "/owner/purchases", label: "Purchases", exact: false },
-  { to: "/owner/suppliers", label: "Suppliers", exact: false },
-  { to: "/owner/delivery", label: "Delivery", exact: false },
-  { to: "/owner/riders", label: "Riders", exact: false },
-  { to: "/owner/coupons", label: "Coupons", exact: false },
-  { to: "/owner/banners", label: "Banners", exact: false },
-  { to: "/owner/reports", label: "Reports", exact: false },
-  { to: "/owner/customers", label: "Customers", exact: false },
-  { to: "/owner/staff", label: "Staff", exact: false },
-  { to: "/owner/settings", label: "Settings", exact: false },
-] as const;
+/** `permission: null` means everyone with dashboard access sees the tab. */
+const TABS: {
+  to: string;
+  label: string;
+  exact: boolean;
+  permission: StaffPermission | null;
+}[] = [
+  { to: "/owner", label: "Home", exact: true, permission: null },
+  { to: "/owner/orders", label: "Orders", exact: false, permission: "online_orders" },
+  { to: "/owner/pos", label: "Counter sale", exact: false, permission: "pos" },
+  { to: "/owner/menu", label: "Menu", exact: false, permission: "menu" },
+  { to: "/owner/inventory", label: "Inventory", exact: false, permission: "inventory" },
+  { to: "/owner/purchases", label: "Purchases", exact: false, permission: "purchases" },
+  { to: "/owner/suppliers", label: "Suppliers", exact: false, permission: "suppliers" },
+  { to: "/owner/delivery", label: "Delivery", exact: false, permission: "settings" },
+  { to: "/owner/riders", label: "Riders", exact: false, permission: "order_management" },
+  { to: "/owner/coupons", label: "Coupons", exact: false, permission: "coupons" },
+  { to: "/owner/banners", label: "Banners", exact: false, permission: "menu" },
+  { to: "/owner/reports", label: "Reports", exact: false, permission: "reports" },
+  { to: "/owner/customers", label: "Customers", exact: false, permission: "customers" },
+  { to: "/owner/staff", label: "Staff", exact: false, permission: "staff" },
+  { to: "/owner/settings", label: "Settings", exact: false, permission: "settings" },
+];
 
 function OwnerLayout() {
   const fetchAccess = useServerFn(getOwnerAccess);
@@ -149,10 +157,12 @@ function OwnerLayout() {
       </header>
 
       <nav className="mb-6 flex gap-2 overflow-x-auto pb-1">
-        {TABS.map((tab) => (
+        {TABS.filter(
+          (tab) => tab.permission === null || hasPermission(access.data, tab.permission),
+        ).map((tab) => (
           <Link
             key={tab.to}
-            to={tab.to}
+            to={tab.to as never}
             activeOptions={{ exact: tab.exact }}
             className={cn(
               "whitespace-nowrap rounded-full border border-border px-4 py-2 text-sm font-medium transition-colors",

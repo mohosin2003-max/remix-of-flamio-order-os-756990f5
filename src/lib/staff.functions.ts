@@ -2,6 +2,8 @@ import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
+import { STAFF_PERMISSIONS } from "@/lib/permissions";
+import type { StaffPermission } from "@/lib/permissions";
 
 /**
  * Staff / role management for the owner area.
@@ -23,6 +25,8 @@ export type StaffMember = {
   phone: string | null;
   email: string | null;
   roles: StaffRole[];
+  /** Sections this person can open. Owners/managers always have all of them. */
+  permissions: StaffPermission[];
   joinedAt: string | null;
 };
 
@@ -46,8 +50,8 @@ export const ownerListStaff = createServerFn({ method: "GET" })
     async ({
       context,
     }): Promise<{ members: StaffMember[]; invites: StaffInvite[]; me: string }> => {
-      const { assertOwner } = await import("@/lib/owner.server");
-      await assertOwner(context.userId);
+      const { assertPermission } = await import("@/lib/owner.server");
+      await assertPermission(context.userId, "staff");
       const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
 
       const [{ data: roleRows }, { data: inviteRows }] = await Promise.all([
@@ -104,8 +108,27 @@ export const ownerListStaff = createServerFn({ method: "GET" })
           phone: profile?.phone ?? null,
           email: profile?.email ?? null,
           roles: [row.role as StaffRole],
+          permissions: [],
           joinedAt: row.created_at,
         });
+      }
+
+      // Effective permissions: managers are unrestricted, staff get their rows.
+      const { data: permRows } = userIds.length
+        ? await supabaseAdmin
+            .from("staff_permissions")
+            .select("user_id, permission")
+            .in("user_id", userIds)
+        : { data: [] as { user_id: string; permission: string }[] };
+
+      for (const member of byUser.values()) {
+        const isManager = member.roles.includes("owner") || member.roles.includes("admin");
+        member.permissions = isManager
+          ? [...STAFF_PERMISSIONS]
+          : (permRows ?? [])
+              .filter((r) => r.user_id === member.userId)
+              .map((r) => r.permission as StaffPermission)
+              .filter((p) => (STAFF_PERMISSIONS as readonly string[]).includes(p));
       }
 
       const invites: StaffInvite[] = (inviteRows ?? []).map((invite) => {
@@ -137,8 +160,8 @@ export const ownerCreateInvite = createServerFn({ method: "POST" })
       .parse(input),
   )
   .handler(async ({ data, context }) => {
-    const { assertOwner } = await import("@/lib/owner.server");
-    await assertOwner(context.userId);
+    const { assertPermission } = await import("@/lib/owner.server");
+    await assertPermission(context.userId, "staff");
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
 
     const { error } = await supabaseAdmin
@@ -156,8 +179,8 @@ export const ownerDeleteInvite = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((input: unknown) => z.object({ id: z.string().uuid() }).parse(input))
   .handler(async ({ data, context }) => {
-    const { assertOwner } = await import("@/lib/owner.server");
-    await assertOwner(context.userId);
+    const { assertPermission } = await import("@/lib/owner.server");
+    await assertPermission(context.userId, "staff");
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
 
     const { error } = await supabaseAdmin.from("owner_invites").delete().eq("id", data.id);
@@ -175,8 +198,8 @@ export const ownerSetStaffRole = createServerFn({ method: "POST" })
     z.object({ userId: z.string().uuid(), role: rolesEnum }).parse(input),
   )
   .handler(async ({ data, context }) => {
-    const { assertOwner } = await import("@/lib/owner.server");
-    await assertOwner(context.userId);
+    const { assertPermission } = await import("@/lib/owner.server");
+    await assertPermission(context.userId, "staff");
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
 
     // Only a full owner may create or change another owner.
@@ -238,8 +261,8 @@ export const ownerRevokeStaff = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((input: unknown) => z.object({ userId: z.string().uuid() }).parse(input))
   .handler(async ({ data, context }) => {
-    const { assertOwner } = await import("@/lib/owner.server");
-    await assertOwner(context.userId);
+    const { assertPermission } = await import("@/lib/owner.server");
+    await assertPermission(context.userId, "staff");
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
 
     if (data.userId === context.userId) {
@@ -290,8 +313,8 @@ export const ownerFindAccount = createServerFn({ method: "POST" })
       data,
       context,
     }): Promise<{ userId: string; fullName: string | null; phone: string | null } | null> => {
-      const { assertOwner } = await import("@/lib/owner.server");
-      await assertOwner(context.userId);
+      const { assertPermission } = await import("@/lib/owner.server");
+      await assertPermission(context.userId, "staff");
       const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
 
       const value = normalizePhone(data.query);
@@ -306,3 +329,46 @@ export const ownerFindAccount = createServerFn({ method: "POST" })
       return { userId: match.id, fullName: match.full_name, phone: match.phone };
     },
   );
+
+/**
+ * Replaces the sections a `staff` member can open. Owners and managers are
+ * unrestricted, so their permission rows are not used.
+ */
+export const ownerSetStaffPermissions = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input: unknown) =>
+    z
+      .object({
+        userId: z.string().uuid(),
+        permissions: z.array(z.enum(STAFF_PERMISSIONS)).max(STAFF_PERMISSIONS.length),
+      })
+      .parse(input),
+  )
+  .handler(async ({ data, context }) => {
+    const { assertPermission } = await import("@/lib/owner.server");
+    await assertPermission(context.userId, "staff");
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+
+    const wanted = Array.from(new Set(data.permissions));
+
+    const { error: delError } = await supabaseAdmin
+      .from("staff_permissions")
+      .delete()
+      .eq("user_id", data.userId);
+    if (delError) {
+      console.error("Permission cleanup failed", delError);
+      throw new Error("We couldn't update this person's access. Please try again.");
+    }
+
+    if (wanted.length) {
+      const { error } = await supabaseAdmin
+        .from("staff_permissions")
+        .insert(wanted.map((permission) => ({ user_id: data.userId, permission })));
+      if (error) {
+        console.error("Grant permissions failed", error);
+        throw new Error("We couldn't update this person's access. Please try again.");
+      }
+    }
+
+    return { ok: true };
+  });
