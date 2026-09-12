@@ -856,7 +856,9 @@ function CheckoutPage() {
           ) : null}
           {blocked ? (
             <p className="mt-2 text-xs text-destructive">
-              Minimum order for delivery is {formatBDT(quote.minimumOrder)}.
+              {outOfRange
+                ? outOfRangeMessage
+                : `Minimum order for delivery is ${formatBDT(quote.minimumOrder)}.`}
             </p>
           ) : null}
 
