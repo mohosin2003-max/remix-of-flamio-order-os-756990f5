@@ -1,5 +1,5 @@
 import { Link, createFileRoute, useNavigate } from "@tanstack/react-router";
-import { useSuspenseQuery } from "@tanstack/react-query";
+import { useQuery, useSuspenseQuery } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
@@ -165,11 +165,58 @@ function CheckoutPage() {
     // Re-priced whenever the cart subtotal changes.
   }, [subtotal]);
 
-  const zone = useMemo(() => resolveZone(zones, zoneId), [zones, zoneId]);
-  const quote = useMemo(
-    () => quoteDelivery({ settings, zone, fulfillment, subtotal, discount }),
-    [settings, zone, fulfillment, subtotal],
+  /**
+   * Distance pricing. The browser only previews the fee — `placeOrder`
+   * recalculates it from the same coordinates on the server, so a tampered
+   * client can never buy cheap delivery.
+   */
+  const quoteLocation = useServerFn(quoteDeliveryForLocation);
+  const distanceM =
+    radiusMode && origin && point
+      ? haversineMeters(origin, { latitude: point.lat, longitude: point.lng })
+      : null;
+  const radiusZone = distanceM === null ? null : pickRadiusZone(zones, distanceM);
+
+  const locationQuote = useQuery({
+    queryKey: ["delivery-location-quote", point?.lat, point?.lng, subtotal, discount],
+    queryFn: () =>
+      quoteLocation({
+        data: { latitude: point!.lat, longitude: point!.lng, subtotal, discount },
+      }),
+    enabled: radiusMode && fulfillment === "delivery" && point !== null,
+  });
+
+  const zone = useMemo(
+    () => (radiusMode ? radiusZone : resolveZone(zones, zoneId)),
+    [radiusMode, radiusZone, zones, zoneId],
   );
+  const baseQuote = useMemo(
+    () => quoteDelivery({ settings, zone, fulfillment, subtotal, discount }),
+    [settings, zone, fulfillment, subtotal, discount],
+  );
+
+  const served = radiusMode ? (locationQuote.data ?? null) : null;
+  const quote =
+    served && served.radiusMode && served.available
+      ? {
+          ...baseQuote,
+          charge: served.charge,
+          estimatedTime: served.estimatedTime,
+          minimumOrder: served.minimumOrder,
+          meetsMinimumOrder: served.meetsMinimumOrder,
+          freeDeliveryThreshold: served.freeDeliveryThreshold,
+          amountToFreeDelivery: served.amountToFreeDelivery,
+          isFree: served.isFree,
+        }
+      : baseQuote;
+
+  const outOfRange =
+    radiusMode && fulfillment === "delivery" && (point === null || served?.available === false);
+  const outOfRangeMessage =
+    point === null
+      ? "Choose your delivery location on the map to see the delivery charge."
+      : (served?.message ?? "Sorry, we don't deliver to that location yet.");
+
   const grandTotal = Math.max(subtotal - discount, 0) + quote.charge;
 
   if (isHydrated && lines.length === 0 && !placed) {
@@ -192,7 +239,7 @@ function CheckoutPage() {
   }
 
   const isDelivery = fulfillment === "delivery";
-  const blocked = isDelivery && !quote.meetsMinimumOrder;
+  const blocked = isDelivery && (!quote.meetsMinimumOrder || outOfRange);
 
   return (
     <div className="mx-auto w-full max-w-5xl px-4 py-8 pb-32 sm:px-6 sm:py-12">
@@ -210,6 +257,10 @@ function CheckoutPage() {
             toast.error(message);
           };
 
+          if (isDelivery && outOfRange) {
+            fail(outOfRangeMessage);
+            return;
+          }
           if (blocked) {
             fail(`Minimum order for delivery is ${formatBDT(quote.minimumOrder)}`);
             return;
@@ -233,7 +284,13 @@ function CheckoutPage() {
             return;
           }
 
-          const record: CustomerAddress = { ...form, zoneId, isDefault: saved.length === 0 };
+          const record: CustomerAddress = {
+            ...form,
+            zoneId: radiusMode ? (zone?.id ?? null) : zoneId,
+            latitude: isDelivery ? (point?.lat ?? null) : null,
+            longitude: isDelivery ? (point?.lng ?? null) : null,
+            isDefault: saved.length === 0,
+          };
           if (isDelivery) {
             try {
               await persistSavedAddress(record);
@@ -257,8 +314,10 @@ function CheckoutPage() {
                 area: form.area?.trim() || null,
                 landmark: form.landmark?.trim() || null,
                 deliveryNotes: form.deliveryNotes?.trim() || null,
-                zoneId: isDelivery ? zoneId : null,
+                zoneId: isDelivery ? (radiusMode ? (zone?.id ?? null) : zoneId) : null,
                 zoneName: isDelivery ? (zone?.name ?? null) : null,
+                latitude: isDelivery ? (point?.lat ?? null) : null,
+                longitude: isDelivery ? (point?.lng ?? null) : null,
                 estimatedTime: quote.estimatedTime,
                 pickupNote: settings.pickupNote,
                 subtotal,
