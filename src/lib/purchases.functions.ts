@@ -105,7 +105,7 @@ export const ownerCreatePurchase = createServerFn({ method: "POST" })
       _item_id: data.itemId,
       _change_type: "add",
       _quantity: data.quantity,
-      _note: `Purchase from ${data.supplierName}`,
+      _note: supplierName ? `Purchase from ${supplierName}` : "Purchase",
       _created_by: context.userId,
     });
 
