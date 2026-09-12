@@ -159,6 +159,10 @@ function OwnerPos() {
           <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
             {visibleProducts.map((product) => {
               const qty = lines[product.id] ?? 0;
+              const categorySlug =
+                categories.find((c) => c.id === product.categoryId)?.slug ?? "";
+              const imageUrl =
+                product.imageUrl ?? placeholderByCategorySlug[categorySlug] ?? null;
               return (
                 <Card key={product.id} className="overflow-hidden">
                   <button
