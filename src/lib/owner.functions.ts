@@ -62,6 +62,11 @@ export interface RestaurantSettings {
   country: string | null;
   isOpen: boolean;
   inventoryMode: "simple" | "advanced";
+  opensAt: string | null;
+  closesAt: string | null;
+  facebookUrl: string | null;
+  instagramUrl: string | null;
+  googleMapsUrl: string | null;
 }
 
 /** Is the caller an owner/admin? Also reports whether ownership is unclaimed. */
@@ -497,7 +502,9 @@ export const ownerGetSettings = createServerFn({ method: "GET" })
 
     const { data } = await supabaseAdmin
       .from("restaurant_settings")
-      .select("id, name, tagline, phone, email, address_line, city, country, is_open, inventory_mode")
+      .select(
+        "id, name, tagline, phone, email, address_line, city, country, is_open, inventory_mode, opens_at, closes_at, facebook_url, instagram_url, google_maps_url",
+      )
       .order("created_at")
       .limit(1)
       .maybeSingle();
@@ -516,6 +523,11 @@ export const ownerGetSettings = createServerFn({ method: "GET" })
       inventoryMode: (data.inventory_mode === "simple" ? "simple" : "advanced") as
         | "simple"
         | "advanced",
+      opensAt: data.opens_at,
+      closesAt: data.closes_at,
+      facebookUrl: data.facebook_url,
+      instagramUrl: data.instagram_url,
+      googleMapsUrl: data.google_maps_url,
     };
   });
 
@@ -534,6 +546,11 @@ export const ownerUpdateSettings = createServerFn({ method: "POST" })
         country: z.string().trim().max(80).nullable(),
         isOpen: z.boolean(),
         inventoryMode: z.enum(["simple", "advanced"]),
+        opensAt: z.string().trim().max(30).nullable(),
+        closesAt: z.string().trim().max(30).nullable(),
+        facebookUrl: z.string().trim().max(300).nullable(),
+        instagramUrl: z.string().trim().max(300).nullable(),
+        googleMapsUrl: z.string().trim().max(500).nullable(),
       })
       .parse(input),
   )
@@ -554,6 +571,11 @@ export const ownerUpdateSettings = createServerFn({ method: "POST" })
         country: data.country,
         is_open: data.isOpen,
         inventory_mode: data.inventoryMode,
+        opens_at: data.opensAt,
+        closes_at: data.closesAt,
+        facebook_url: data.facebookUrl,
+        instagram_url: data.instagramUrl,
+        google_maps_url: data.googleMapsUrl,
       })
       .eq("id", data.id);
 

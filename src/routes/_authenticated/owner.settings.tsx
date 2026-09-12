@@ -99,6 +99,22 @@ function OwnerSettings() {
             <Input value={form.email ?? ""} onChange={(e) => set("email", e.target.value || null)} />
           </Field>
         </div>
+        <div className="grid gap-4 sm:grid-cols-2">
+          <Field label="Opening time">
+            <Input
+              placeholder="e.g. 10:00 AM"
+              value={form.opensAt ?? ""}
+              onChange={(e) => set("opensAt", e.target.value || null)}
+            />
+          </Field>
+          <Field label="Closing time">
+            <Input
+              placeholder="e.g. 11:00 PM"
+              value={form.closesAt ?? ""}
+              onChange={(e) => set("closesAt", e.target.value || null)}
+            />
+          </Field>
+        </div>
         <Field label="Address">
           <Input
             value={form.addressLine ?? ""}
@@ -116,6 +132,27 @@ function OwnerSettings() {
             />
           </Field>
         </div>
+        <Field label="Facebook page URL">
+          <Input
+            placeholder="https://facebook.com/…"
+            value={form.facebookUrl ?? ""}
+            onChange={(e) => set("facebookUrl", e.target.value || null)}
+          />
+        </Field>
+        <Field label="Instagram profile URL">
+          <Input
+            placeholder="https://instagram.com/…"
+            value={form.instagramUrl ?? ""}
+            onChange={(e) => set("instagramUrl", e.target.value || null)}
+          />
+        </Field>
+        <Field label="Google Maps URL">
+          <Input
+            placeholder="https://maps.google.com/…"
+            value={form.googleMapsUrl ?? ""}
+            onChange={(e) => set("googleMapsUrl", e.target.value || null)}
+          />
+        </Field>
 
         <Button
           disabled={saving}
