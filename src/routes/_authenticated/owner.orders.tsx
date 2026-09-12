@@ -144,6 +144,49 @@ function OwnerOrders() {
                 </SelectContent>
               </Select>
             </div>
+
+            {order.fulfillment === "delivery" ? (
+              <div className="flex flex-wrap items-center gap-2">
+                <span className="text-xs text-muted-foreground">Rider</span>
+                <Select
+                  value={order.riderId ?? "none"}
+                  disabled={riderPending === order.id}
+                  onValueChange={async (value) => {
+                    setRiderPending(order.id);
+                    try {
+                      await assignRider({
+                        data: { orderId: order.id, riderId: value === "none" ? null : value },
+                      });
+                      await queryClient.invalidateQueries({ queryKey: ["owner-orders"] });
+                      toast.success(value === "none" ? "Rider cleared" : "Rider assigned");
+                    } catch (error) {
+                      toast.error(
+                        error instanceof Error ? error.message : "Couldn't assign this rider",
+                      );
+                    } finally {
+                      setRiderPending(null);
+                    }
+                  }}
+                >
+                  <SelectTrigger className="h-9 w-[190px]">
+                    <SelectValue placeholder="Assign rider" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="none">No rider</SelectItem>
+                    {activeRiders.map((rider) => (
+                      <SelectItem key={rider.id} value={rider.id}>
+                        {rider.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                {activeRiders.length === 0 ? (
+                  <span className="text-xs text-muted-foreground">
+                    Add riders in the Riders tab
+                  </span>
+                ) : null}
+              </div>
+            ) : null}
           </CardContent>
         </Card>
       ))}
