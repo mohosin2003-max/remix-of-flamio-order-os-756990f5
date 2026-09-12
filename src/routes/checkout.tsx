@@ -6,6 +6,7 @@ import { toast } from "sonner";
 import { Loader2, Pencil, Trash2 } from "lucide-react";
 
 
+import { MapPicker } from "@/components/map/MapPicker";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -18,6 +19,9 @@ import { useSavedAddresses } from "@/hooks/use-saved-addresses";
 import { paymentMethods } from "@/data/restaurant";
 import { emptyAddress } from "@/lib/addresses";
 import { deliveryQueryOptions, quoteDelivery, resolveZone } from "@/lib/delivery";
+import { quoteDeliveryForLocation } from "@/lib/delivery.functions";
+import { formatDistance, haversineMeters, pickRadiusZone } from "@/lib/geo";
+import { reverseGeocode } from "@/lib/customer-location";
 import { formatBDT } from "@/lib/format";
 import { checkCoupon } from "@/lib/coupons.functions";
 import { saveOrder, type PlacedOrder } from "@/lib/orders";
@@ -51,6 +55,12 @@ function CheckoutPage() {
 
   const { data } = useSuspenseQuery(deliveryQueryOptions());
   const { settings, zones } = data;
+  const origin = data.origin;
+  /** Distance pricing only kicks in once the owner has both a restaurant
+   * location and at least one distance ring. Otherwise everything below stays
+   * exactly as it was. */
+  const radiusMode =
+    origin !== null && zones.some((z) => z.zoneType === "radius" && z.radiusMaxM !== null);
   const navigate = useNavigate();
 
   const submitOrder = useServerFn(placeOrder);
@@ -82,6 +92,8 @@ function CheckoutPage() {
     save: persistSavedAddress,
   } = useSavedAddresses();
   const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [point, setPoint] = useState<{ lat: number; lng: number } | null>(null);
+  const [locating, setLocating] = useState(false);
   const [form, setForm] = useState<CustomerAddress>(() => emptyAddress());
   const [addressTouched, setAddressTouched] = useState(false);
 
@@ -92,6 +104,9 @@ function CheckoutPage() {
     if (!preferred) return;
     setSelectedId(preferred.id);
     setForm(preferred);
+    if (preferred.latitude !== null && preferred.longitude !== null) {
+      setPoint({ lat: preferred.latitude, lng: preferred.longitude });
+    }
     if (preferred.zoneId) setZoneId(preferred.zoneId);
     setAddressTouched(true);
   }, [saved, addressesLoading, addressTouched]);
@@ -389,6 +404,9 @@ function CheckoutPage() {
                           setSelectedId(a.id);
                           setAddressTouched(true);
                           setForm(a);
+                          if (a.latitude !== null && a.longitude !== null) {
+                            setPoint({ lat: a.latitude, lng: a.longitude });
+                          }
                           if (a.zoneId) setZoneId(a.zoneId);
                         }}
                       >
