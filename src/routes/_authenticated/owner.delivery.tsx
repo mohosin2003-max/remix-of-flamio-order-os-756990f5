@@ -122,6 +122,21 @@ function OwnerDelivery() {
   }
 
   const rows = zones.data ?? [];
+  const rings = rows.filter((z) => z.zoneType === "radius" && z.radiusMaxM !== null);
+  const savedOrigin = origin.data ?? null;
+  const mapPin =
+    pin ?? (savedOrigin ? { lat: savedOrigin.latitude, lng: savedOrigin.longitude } : null);
+  const mapCenter = mapPin ?? FALLBACK_CENTER;
+
+  const circles = rings
+    .slice()
+    .sort((a, b) => (a.radiusMaxM ?? 0) - (b.radiusMaxM ?? 0))
+    .map((z, i) => ({
+      innerM: z.radiusMinM ?? 0,
+      outerM: z.radiusMaxM ?? 0,
+      label: `${z.name} · ${formatDistance(z.radiusMinM ?? 0)}–${formatDistance(z.radiusMaxM ?? 0)}`,
+      color: RING_COLORS[i % RING_COLORS.length]!,
+    }));
 
   const refresh = async () => {
     await queryClient.invalidateQueries({ queryKey: ["owner-delivery-zones"] });
@@ -129,10 +144,52 @@ function OwnerDelivery() {
     await queryClient.invalidateQueries({ queryKey: ["delivery-settings"] });
   };
 
+  const saveLocation = async () => {
+    if (!pin) return;
+    setSavingPin(true);
+    try {
+      await saveOrigin({ data: { latitude: pin.lat, longitude: pin.lng } });
+      await origin.refetch();
+      await queryClient.invalidateQueries({ queryKey: ["delivery-settings"] });
+      setPin(null);
+      toast.success("Restaurant location saved");
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Couldn't save the location");
+    } finally {
+      setSavingPin(false);
+    }
+  };
+
+  /** Overlapping rings are allowed but confusing — warn before saving. */
+  const overlapWarning = (() => {
+    if (form.zoneType !== "radius") return null;
+    const min = Number(form.radiusMinM) || 0;
+    const max = Number(form.radiusMaxM) || 0;
+    if (max <= min) return null;
+    const clash = rings.find(
+      (z) => z.id !== form.id && min < (z.radiusMaxM ?? 0) && max > (z.radiusMinM ?? 0),
+    );
+    return clash
+      ? `This distance range overlaps "${clash.name}". The nearer ring wins for customers in both.`
+      : null;
+  })();
+
   const submit = async () => {
     if (form.name.trim().length < 2) {
       toast.error("Please enter a zone name.");
       return;
+    }
+    if (form.zoneType === "radius") {
+      const min = Number(form.radiusMinM) || 0;
+      const max = Number(form.radiusMaxM) || 0;
+      if (max <= min) {
+        toast.error("The end distance must be larger than the start distance.");
+        return;
+      }
+      if (!savedOrigin) {
+        toast.error("Set the restaurant location on the map first.");
+        return;
+      }
     }
     setSaving(true);
     try {
