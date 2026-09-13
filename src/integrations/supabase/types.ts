@@ -808,6 +808,7 @@ export type Database = {
       }
       profiles: {
         Row: {
+          avatar_path: string | null
           created_at: string
           email: string | null
           full_name: string | null
@@ -816,6 +817,7 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          avatar_path?: string | null
           created_at?: string
           email?: string | null
           full_name?: string | null
@@ -824,6 +826,7 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          avatar_path?: string | null
           created_at?: string
           email?: string | null
           full_name?: string | null
@@ -1020,6 +1023,136 @@ export type Database = {
           updated_at?: string
         }
         Relationships: []
+      }
+      reward_claims: {
+        Row: {
+          created_at: string
+          id: string
+          note: string | null
+          reference: string
+          review_note: string | null
+          reviewed_at: string | null
+          reviewed_by: string | null
+          rule_id: string
+          status: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          note?: string | null
+          reference: string
+          review_note?: string | null
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          rule_id: string
+          status?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          note?: string | null
+          reference?: string
+          review_note?: string | null
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          rule_id?: string
+          status?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "reward_claims_rule_id_fkey"
+            columns: ["rule_id"]
+            isOneToOne: false
+            referencedRelation: "reward_rules"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      reward_rules: {
+        Row: {
+          created_at: string
+          description: string | null
+          id: string
+          is_enabled: boolean
+          name: string
+          points: number
+          requires_claim: boolean
+          slug: string
+          sort_order: number
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          description?: string | null
+          id?: string
+          is_enabled?: boolean
+          name: string
+          points?: number
+          requires_claim?: boolean
+          slug: string
+          sort_order?: number
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          description?: string | null
+          id?: string
+          is_enabled?: boolean
+          name?: string
+          points?: number
+          requires_claim?: boolean
+          slug?: string
+          sort_order?: number
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      reward_transactions: {
+        Row: {
+          action_key: string
+          created_at: string
+          description: string
+          id: string
+          points: number
+          reference_id: string
+          rule_id: string | null
+          user_id: string
+        }
+        Insert: {
+          action_key: string
+          created_at?: string
+          description: string
+          id?: string
+          points: number
+          reference_id: string
+          rule_id?: string | null
+          user_id: string
+        }
+        Update: {
+          action_key?: string
+          created_at?: string
+          description?: string
+          id?: string
+          points?: number
+          reference_id?: string
+          rule_id?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "reward_transactions_rule_id_fkey"
+            columns: ["rule_id"]
+            isOneToOne: false
+            referencedRelation: "reward_rules"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       riders: {
         Row: {
