@@ -28,6 +28,8 @@ import { Route as AuthenticatedAccountAddressesRouteImport } from './routes/_aut
 import { Route as AuthenticatedAccountFavoritesRouteImport } from './routes/_authenticated/account.favorites'
 import { Route as AuthenticatedAccountNotificationsRouteImport } from './routes/_authenticated/account.notifications'
 import { Route as AuthenticatedAccountOrdersRouteImport } from './routes/_authenticated/account.orders'
+import { Route as AuthenticatedAccountRewardsRouteImport } from './routes/_authenticated/account.rewards'
+import { Route as AuthenticatedAccountVouchersRouteImport } from './routes/_authenticated/account.vouchers'
 import { Route as AuthenticatedOwnerIndexRouteImport } from './routes/_authenticated/owner.index'
 import { Route as AuthenticatedOwnerBannersRouteImport } from './routes/_authenticated/owner.banners'
 import { Route as AuthenticatedOwnerCouponsRouteImport } from './routes/_authenticated/owner.coupons'
@@ -39,6 +41,7 @@ import { Route as AuthenticatedOwnerOrdersRouteImport } from './routes/_authenti
 import { Route as AuthenticatedOwnerPosRouteImport } from './routes/_authenticated/owner.pos'
 import { Route as AuthenticatedOwnerPurchasesRouteImport } from './routes/_authenticated/owner.purchases'
 import { Route as AuthenticatedOwnerReportsRouteImport } from './routes/_authenticated/owner.reports'
+import { Route as AuthenticatedOwnerRewardsRouteImport } from './routes/_authenticated/owner.rewards'
 import { Route as AuthenticatedOwnerRidersRouteImport } from './routes/_authenticated/owner.riders'
 import { Route as AuthenticatedOwnerSettingsRouteImport } from './routes/_authenticated/owner.settings'
 import { Route as AuthenticatedOwnerStaffRouteImport } from './routes/_authenticated/owner.staff'
@@ -143,6 +146,18 @@ const AuthenticatedAccountOrdersRoute =
     path: '/account/orders',
     getParentRoute: () => AuthenticatedRouteRoute,
   } as any)
+const AuthenticatedAccountRewardsRoute =
+  AuthenticatedAccountRewardsRouteImport.update({
+    id: '/account/rewards',
+    path: '/account/rewards',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
+const AuthenticatedAccountVouchersRoute =
+  AuthenticatedAccountVouchersRouteImport.update({
+    id: '/account/vouchers',
+    path: '/account/vouchers',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
 const AuthenticatedOwnerIndexRoute = AuthenticatedOwnerIndexRouteImport.update({
   id: '/',
   path: '/',
@@ -206,6 +221,12 @@ const AuthenticatedOwnerReportsRoute =
     path: '/reports',
     getParentRoute: () => AuthenticatedOwnerRoute,
   } as any)
+const AuthenticatedOwnerRewardsRoute =
+  AuthenticatedOwnerRewardsRouteImport.update({
+    id: '/rewards',
+    path: '/rewards',
+    getParentRoute: () => AuthenticatedOwnerRoute,
+  } as any)
 const AuthenticatedOwnerRidersRoute =
   AuthenticatedOwnerRidersRouteImport.update({
     id: '/riders',
@@ -248,6 +269,8 @@ export interface FileRoutesByFullPath {
   '/account/favorites': typeof AuthenticatedAccountFavoritesRoute
   '/account/notifications': typeof AuthenticatedAccountNotificationsRoute
   '/account/orders': typeof AuthenticatedAccountOrdersRoute
+  '/account/rewards': typeof AuthenticatedAccountRewardsRoute
+  '/account/vouchers': typeof AuthenticatedAccountVouchersRoute
   '/owner/banners': typeof AuthenticatedOwnerBannersRoute
   '/owner/coupons': typeof AuthenticatedOwnerCouponsRoute
   '/owner/customers': typeof AuthenticatedOwnerCustomersRoute
@@ -258,6 +281,7 @@ export interface FileRoutesByFullPath {
   '/owner/pos': typeof AuthenticatedOwnerPosRoute
   '/owner/purchases': typeof AuthenticatedOwnerPurchasesRoute
   '/owner/reports': typeof AuthenticatedOwnerReportsRoute
+  '/owner/rewards': typeof AuthenticatedOwnerRewardsRoute
   '/owner/riders': typeof AuthenticatedOwnerRidersRoute
   '/owner/settings': typeof AuthenticatedOwnerSettingsRoute
   '/owner/staff': typeof AuthenticatedOwnerStaffRoute
@@ -282,6 +306,8 @@ export interface FileRoutesByTo {
   '/account/favorites': typeof AuthenticatedAccountFavoritesRoute
   '/account/notifications': typeof AuthenticatedAccountNotificationsRoute
   '/account/orders': typeof AuthenticatedAccountOrdersRoute
+  '/account/rewards': typeof AuthenticatedAccountRewardsRoute
+  '/account/vouchers': typeof AuthenticatedAccountVouchersRoute
   '/owner/banners': typeof AuthenticatedOwnerBannersRoute
   '/owner/coupons': typeof AuthenticatedOwnerCouponsRoute
   '/owner/customers': typeof AuthenticatedOwnerCustomersRoute
@@ -292,6 +318,7 @@ export interface FileRoutesByTo {
   '/owner/pos': typeof AuthenticatedOwnerPosRoute
   '/owner/purchases': typeof AuthenticatedOwnerPurchasesRoute
   '/owner/reports': typeof AuthenticatedOwnerReportsRoute
+  '/owner/rewards': typeof AuthenticatedOwnerRewardsRoute
   '/owner/riders': typeof AuthenticatedOwnerRidersRoute
   '/owner/settings': typeof AuthenticatedOwnerSettingsRoute
   '/owner/staff': typeof AuthenticatedOwnerStaffRoute
@@ -319,6 +346,8 @@ export interface FileRoutesById {
   '/_authenticated/account/favorites': typeof AuthenticatedAccountFavoritesRoute
   '/_authenticated/account/notifications': typeof AuthenticatedAccountNotificationsRoute
   '/_authenticated/account/orders': typeof AuthenticatedAccountOrdersRoute
+  '/_authenticated/account/rewards': typeof AuthenticatedAccountRewardsRoute
+  '/_authenticated/account/vouchers': typeof AuthenticatedAccountVouchersRoute
   '/_authenticated/owner/banners': typeof AuthenticatedOwnerBannersRoute
   '/_authenticated/owner/coupons': typeof AuthenticatedOwnerCouponsRoute
   '/_authenticated/owner/customers': typeof AuthenticatedOwnerCustomersRoute
@@ -329,6 +358,7 @@ export interface FileRoutesById {
   '/_authenticated/owner/pos': typeof AuthenticatedOwnerPosRoute
   '/_authenticated/owner/purchases': typeof AuthenticatedOwnerPurchasesRoute
   '/_authenticated/owner/reports': typeof AuthenticatedOwnerReportsRoute
+  '/_authenticated/owner/rewards': typeof AuthenticatedOwnerRewardsRoute
   '/_authenticated/owner/riders': typeof AuthenticatedOwnerRidersRoute
   '/_authenticated/owner/settings': typeof AuthenticatedOwnerSettingsRoute
   '/_authenticated/owner/staff': typeof AuthenticatedOwnerStaffRoute
@@ -356,6 +386,8 @@ export interface FileRouteTypes {
     | '/account/favorites'
     | '/account/notifications'
     | '/account/orders'
+    | '/account/rewards'
+    | '/account/vouchers'
     | '/owner/banners'
     | '/owner/coupons'
     | '/owner/customers'
@@ -366,6 +398,7 @@ export interface FileRouteTypes {
     | '/owner/pos'
     | '/owner/purchases'
     | '/owner/reports'
+    | '/owner/rewards'
     | '/owner/riders'
     | '/owner/settings'
     | '/owner/staff'
@@ -390,6 +423,8 @@ export interface FileRouteTypes {
     | '/account/favorites'
     | '/account/notifications'
     | '/account/orders'
+    | '/account/rewards'
+    | '/account/vouchers'
     | '/owner/banners'
     | '/owner/coupons'
     | '/owner/customers'
@@ -400,6 +435,7 @@ export interface FileRouteTypes {
     | '/owner/pos'
     | '/owner/purchases'
     | '/owner/reports'
+    | '/owner/rewards'
     | '/owner/riders'
     | '/owner/settings'
     | '/owner/staff'
@@ -426,6 +462,8 @@ export interface FileRouteTypes {
     | '/_authenticated/account/favorites'
     | '/_authenticated/account/notifications'
     | '/_authenticated/account/orders'
+    | '/_authenticated/account/rewards'
+    | '/_authenticated/account/vouchers'
     | '/_authenticated/owner/banners'
     | '/_authenticated/owner/coupons'
     | '/_authenticated/owner/customers'
@@ -436,6 +474,7 @@ export interface FileRouteTypes {
     | '/_authenticated/owner/pos'
     | '/_authenticated/owner/purchases'
     | '/_authenticated/owner/reports'
+    | '/_authenticated/owner/rewards'
     | '/_authenticated/owner/riders'
     | '/_authenticated/owner/settings'
     | '/_authenticated/owner/staff'
@@ -594,6 +633,20 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedAccountOrdersRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+    '/_authenticated/account/rewards': {
+      id: '/_authenticated/account/rewards'
+      path: '/account/rewards'
+      fullPath: '/account/rewards'
+      preLoaderRoute: typeof AuthenticatedAccountRewardsRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/account/vouchers': {
+      id: '/_authenticated/account/vouchers'
+      path: '/account/vouchers'
+      fullPath: '/account/vouchers'
+      preLoaderRoute: typeof AuthenticatedAccountVouchersRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
     '/_authenticated/owner/': {
       id: '/_authenticated/owner/'
       path: '/'
@@ -671,6 +724,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedOwnerReportsRouteImport
       parentRoute: typeof AuthenticatedOwnerRoute
     }
+    '/_authenticated/owner/rewards': {
+      id: '/_authenticated/owner/rewards'
+      path: '/rewards'
+      fullPath: '/owner/rewards'
+      preLoaderRoute: typeof AuthenticatedOwnerRewardsRouteImport
+      parentRoute: typeof AuthenticatedOwnerRoute
+    }
     '/_authenticated/owner/riders': {
       id: '/_authenticated/owner/riders'
       path: '/riders'
@@ -713,6 +773,7 @@ interface AuthenticatedOwnerRouteChildren {
   AuthenticatedOwnerPosRoute: typeof AuthenticatedOwnerPosRoute
   AuthenticatedOwnerPurchasesRoute: typeof AuthenticatedOwnerPurchasesRoute
   AuthenticatedOwnerReportsRoute: typeof AuthenticatedOwnerReportsRoute
+  AuthenticatedOwnerRewardsRoute: typeof AuthenticatedOwnerRewardsRoute
   AuthenticatedOwnerRidersRoute: typeof AuthenticatedOwnerRidersRoute
   AuthenticatedOwnerSettingsRoute: typeof AuthenticatedOwnerSettingsRoute
   AuthenticatedOwnerStaffRoute: typeof AuthenticatedOwnerStaffRoute
@@ -731,6 +792,7 @@ const AuthenticatedOwnerRouteChildren: AuthenticatedOwnerRouteChildren = {
   AuthenticatedOwnerPosRoute: AuthenticatedOwnerPosRoute,
   AuthenticatedOwnerPurchasesRoute: AuthenticatedOwnerPurchasesRoute,
   AuthenticatedOwnerReportsRoute: AuthenticatedOwnerReportsRoute,
+  AuthenticatedOwnerRewardsRoute: AuthenticatedOwnerRewardsRoute,
   AuthenticatedOwnerRidersRoute: AuthenticatedOwnerRidersRoute,
   AuthenticatedOwnerSettingsRoute: AuthenticatedOwnerSettingsRoute,
   AuthenticatedOwnerStaffRoute: AuthenticatedOwnerStaffRoute,
@@ -748,6 +810,8 @@ interface AuthenticatedRouteRouteChildren {
   AuthenticatedAccountFavoritesRoute: typeof AuthenticatedAccountFavoritesRoute
   AuthenticatedAccountNotificationsRoute: typeof AuthenticatedAccountNotificationsRoute
   AuthenticatedAccountOrdersRoute: typeof AuthenticatedAccountOrdersRoute
+  AuthenticatedAccountRewardsRoute: typeof AuthenticatedAccountRewardsRoute
+  AuthenticatedAccountVouchersRoute: typeof AuthenticatedAccountVouchersRoute
   AuthenticatedAccountIndexRoute: typeof AuthenticatedAccountIndexRoute
 }
 
@@ -759,6 +823,8 @@ const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedAccountNotificationsRoute:
     AuthenticatedAccountNotificationsRoute,
   AuthenticatedAccountOrdersRoute: AuthenticatedAccountOrdersRoute,
+  AuthenticatedAccountRewardsRoute: AuthenticatedAccountRewardsRoute,
+  AuthenticatedAccountVouchersRoute: AuthenticatedAccountVouchersRoute,
   AuthenticatedAccountIndexRoute: AuthenticatedAccountIndexRoute,
 }
 
