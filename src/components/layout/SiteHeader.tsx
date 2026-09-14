@@ -1,22 +1,12 @@
-import { Link, useNavigate } from "@tanstack/react-router";
-import { useQueryClient } from "@tanstack/react-query";
-import { MoreVertical, Search } from "lucide-react";
+import { Link } from "@tanstack/react-router";
+import { Search } from "lucide-react";
 import { useState } from "react";
 
 import { LocationSelector, useCustomerLocation } from "@/components/layout/LocationSelector";
 import { NotificationBell } from "@/components/layout/NotificationBell";
 import { SearchOverlay } from "@/components/search/SearchOverlay";
 import { Button } from "@/components/ui/button";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
-import { useCart } from "@/context/cart";
 import { useAuth } from "@/hooks/use-auth";
-import { supabase } from "@/integrations/supabase/client";
 
 const navItems = [
   { to: "/", label: "Home" },
@@ -26,19 +16,9 @@ const navItems = [
 ] as const;
 
 export function SiteHeader() {
-  const { itemCount, isHydrated } = useCart();
   const { isAuthenticated, loading } = useAuth();
-  const navigate = useNavigate();
-  const queryClient = useQueryClient();
   const [searchOpen, setSearchOpen] = useState(false);
   const { location, setLocation } = useCustomerLocation();
-
-  async function handleSignOut() {
-    await queryClient.cancelQueries();
-    queryClient.clear();
-    await supabase.auth.signOut();
-    void navigate({ to: "/auth", replace: true });
-  }
 
   return (
     <>
@@ -78,46 +58,6 @@ export function SiteHeader() {
           </Button>
 
           {!loading && isAuthenticated ? <NotificationBell /> : null}
-
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button variant="ghost" size="icon" aria-label="More options">
-                <MoreVertical aria-hidden="true" />
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" className="w-52">
-              {navItems.map((item) => (
-                <DropdownMenuItem key={item.to} asChild>
-                  <Link to={item.to}>{item.label}</Link>
-                </DropdownMenuItem>
-              ))}
-              <DropdownMenuSeparator />
-              <DropdownMenuItem asChild>
-                <Link to="/cart">
-                  Cart{isHydrated && itemCount > 0 ? ` (${itemCount})` : ""}
-                </Link>
-              </DropdownMenuItem>
-              {!loading && isAuthenticated ? (
-                <>
-                  <DropdownMenuItem asChild>
-                    <Link to="/account/orders">My Orders</Link>
-                  </DropdownMenuItem>
-                  <DropdownMenuItem asChild>
-                    <Link to="/account/favorites">My Favorites</Link>
-                  </DropdownMenuItem>
-                  <DropdownMenuItem asChild>
-                    <Link to="/account">My Account</Link>
-                  </DropdownMenuItem>
-                  <DropdownMenuSeparator />
-                  <DropdownMenuItem onSelect={() => void handleSignOut()}>Log out</DropdownMenuItem>
-                </>
-              ) : (
-                <DropdownMenuItem asChild>
-                  <Link to="/auth">Sign in</Link>
-                </DropdownMenuItem>
-              )}
-            </DropdownMenuContent>
-          </DropdownMenu>
         </div>
       </div>
     </header>

@@ -49,6 +49,7 @@ const TABS: {
   { to: "/owner/delivery", label: "Delivery", exact: false, permission: "settings" },
   { to: "/owner/riders", label: "Riders", exact: false, permission: "order_management" },
   { to: "/owner/coupons", label: "Coupons", exact: false, permission: "coupons" },
+  { to: "/owner/rewards", label: "Rewards", exact: false, permission: "coupons" },
   { to: "/owner/banners", label: "Banners", exact: false, permission: "menu" },
   { to: "/owner/reports", label: "Reports", exact: false, permission: "reports" },
   { to: "/owner/customers", label: "Customers", exact: false, permission: "customers" },

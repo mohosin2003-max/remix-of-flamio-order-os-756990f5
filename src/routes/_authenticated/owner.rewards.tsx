@@ -14,7 +14,20 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Switch } from "@/components/ui/switch";
 import { ownerGetRewards, ownerReviewRewardClaim, ownerUpdateRewardRule } from "@/lib/rewards.functions";
 
-export const Route = createFileRoute("/_authenticated/owner/rewards")({ component: OwnerRewards });
+export const Route = createFileRoute("/_authenticated/owner/rewards")({
+  head: () => ({
+    meta: [
+      { title: "Rewards Management — Flamio" },
+      { name: "description", content: "Manage Flamio reward actions and customer claims." },
+      { property: "og:title", content: "Rewards Management — Flamio" },
+      { property: "og:description", content: "Manage Flamio reward actions and customer claims." },
+      { property: "og:type", content: "website" },
+      { name: "twitter:card", content: "summary" },
+      { name: "robots", content: "noindex" },
+    ],
+  }),
+  component: OwnerRewards,
+});
 
 function OwnerRewards() {
   const getRewards = useServerFn(ownerGetRewards);
