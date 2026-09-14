@@ -1,10 +1,28 @@
 import { Link, createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
-import { useQueryClient } from "@tanstack/react-query";
-import { useEffect, useState } from "react";
-import { Loader2, LogOut, Receipt, ShieldAlert, ShieldCheck } from "lucide-react";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useEffect, useRef, useState, type LucideIcon } from "react";
+import {
+  Camera,
+  ChevronRight,
+  Coins,
+  Crown,
+  Gift,
+  Heart,
+  Loader2,
+  LockKeyhole,
+  LogOut,
+  MapPin,
+  Pencil,
+  ReceiptText,
+  ShieldAlert,
+  ShieldCheck,
+  Sparkles,
+} from "lucide-react";
 import { toast } from "sonner";
 
+import heroImage from "@/assets/hero-flamio.jpg";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -17,6 +35,7 @@ import {
 } from "@/lib/otp";
 import { commitPhoneChange } from "@/lib/phone-change.functions";
 import { formatPhone, isValidPhone, normalizePhone } from "@/lib/phone";
+import { getMyRewards } from "@/lib/rewards.functions";
 
 export const Route = createFileRoute("/_authenticated/account/")({
   head: () => ({
@@ -34,16 +53,28 @@ export const Route = createFileRoute("/_authenticated/account/")({
 });
 
 function AccountPage() {
-  const { profile, loading, refreshProfile } = useAuth();
+  const { profile, user, loading, refreshProfile } = useAuth();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const commitPhone = useServerFn(commitPhoneChange);
+  const fetchRewards = useServerFn(getMyRewards);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const [fullName, setFullName] = useState("");
   const [phone, setPhone] = useState("");
   const [email, setEmail] = useState("");
   const [saving, setSaving] = useState(false);
   const [hydrated, setHydrated] = useState(false);
+  const [editing, setEditing] = useState(false);
+  const [photoBusy, setPhotoBusy] = useState(false);
+  const [photoPreview, setPhotoPreview] = useState<string | null>(null);
+
+  const rewards = useQuery({
+    queryKey: ["my-rewards"],
+    queryFn: () => fetchRewards(),
+    enabled: Boolean(user),
+    staleTime: 30_000,
+  });
 
   // Phone-change verification state (real SMS OTP via the auth provider).
   const [pendingPhone, setPendingPhone] = useState<string | null>(null);
@@ -66,6 +97,61 @@ function AccountPage() {
     const timer = window.setTimeout(() => setCooldown((c) => c - 1), 1000);
     return () => window.clearTimeout(timer);
   }, [cooldown]);
+
+  useEffect(() => {
+    return () => {
+      if (photoPreview) URL.revokeObjectURL(photoPreview);
+    };
+  }, [photoPreview]);
+
+  async function handlePhotoChange(file: File | undefined) {
+    if (!file || !profile || photoBusy) return;
+    const extensions: Record<string, string> = {
+      "image/jpeg": "jpg",
+      "image/png": "png",
+      "image/webp": "webp",
+    };
+    const extension = extensions[file.type];
+    if (!extension) {
+      toast.error("Choose a JPG, PNG, or WebP image.");
+      return;
+    }
+    if (file.size > 5 * 1024 * 1024) {
+      toast.error("Choose an image smaller than 5 MB.");
+      return;
+    }
+
+    const preview = URL.createObjectURL(file);
+    setPhotoPreview(preview);
+    setPhotoBusy(true);
+    const nextPath = `${profile.id}/${crypto.randomUUID()}.${extension}`;
+    try {
+      const { error: uploadError } = await supabase.storage
+        .from("profile-photos")
+        .upload(nextPath, file, { contentType: file.type, upsert: false });
+      if (uploadError) throw uploadError;
+
+      const { error: profileError } = await supabase
+        .from("profiles")
+        .update({ avatar_path: nextPath })
+        .eq("id", profile.id);
+      if (profileError) {
+        await supabase.storage.from("profile-photos").remove([nextPath]);
+        throw profileError;
+      }
+      if (profile.avatarPath && profile.avatarPath !== nextPath) {
+        await supabase.storage.from("profile-photos").remove([profile.avatarPath]);
+      }
+      refreshProfile();
+      toast.success("Profile photo updated");
+    } catch {
+      setPhotoPreview(null);
+      toast.error("We couldn't update your photo. Please try again.");
+    } finally {
+      setPhotoBusy(false);
+      if (fileInputRef.current) fileInputRef.current.value = "";
+    }
+  }
 
   async function handleSave(event: React.FormEvent) {
     event.preventDefault();
@@ -112,6 +198,7 @@ function AccountPage() {
       return;
     }
     toast.success("Profile saved");
+    setEditing(false);
   }
 
   async function startPhoneVerification(target: string, resend = false) {
@@ -182,29 +269,74 @@ function AccountPage() {
     void navigate({ to: "/auth", replace: true });
   }
 
+  const displayName = profile?.fullName?.trim() || "Flamio customer";
+  const initials = displayName
+    .split(/\s+/)
+    .slice(0, 2)
+    .map((part) => part[0])
+    .join("")
+    .toUpperCase();
+  const avatarUrl = photoPreview ?? profile?.avatarUrl ?? undefined;
+  const services: { to: "/account/orders" | "/account/addresses" | "/account/favorites" | "/account/vouchers" | "/account/rewards"; title: string; description: string; icon: LucideIcon }[] = [
+    { to: "/account/orders", title: "My Orders", description: "View and track orders", icon: ReceiptText },
+    { to: "/account/addresses", title: "Addresses", description: "Manage delivery addresses", icon: MapPin },
+    { to: "/account/favorites", title: "Favorites", description: "Your saved dishes", icon: Heart },
+    { to: "/account/vouchers", title: "Vouchers", description: "Available coupons", icon: Gift },
+    { to: "/account/rewards", title: "Rewards", description: "Earn and view points", icon: Crown },
+  ];
+
   return (
-    <div className="mx-auto w-full max-w-2xl px-4 py-8 pb-28 sm:px-6 sm:py-12">
-      <h1 className="font-display text-3xl font-black sm:text-4xl">My Account</h1>
-      <p className="mt-2 text-sm text-muted-foreground">
-        {profile?.phone ? formatPhone(profile.phone) : "Keep your details up to date for checkout."}
-      </p>
+    <div className="mx-auto w-full max-w-2xl px-3 py-4 pb-28 sm:px-6 sm:py-8">
+      <section className="overflow-hidden rounded-lg border border-border bg-card shadow-card">
+        <div className="relative h-32 overflow-hidden sm:h-40">
+          <img src={heroImage} alt="" className="h-full w-full object-cover" />
+          <div className="absolute inset-0 bg-gradient-to-t from-card via-card/20 to-transparent" />
+        </div>
 
-      <div className="mt-6 grid gap-3 sm:grid-cols-2">
-        <Button asChild variant="secondary" size="lg" className="justify-start">
-          <Link to="/account/orders">
-            <Receipt aria-hidden="true" /> My Orders
-          </Link>
-        </Button>
-        <Button variant="outline" size="lg" className="justify-start" onClick={handleSignOut}>
-          <LogOut aria-hidden="true" /> Log out
-        </Button>
-      </div>
+        <div className="relative px-4 pb-5 sm:px-6">
+          <div className="-mt-14 flex items-end gap-4">
+            <div className="relative shrink-0">
+              <Avatar className="size-24 border-4 border-card bg-secondary shadow-card sm:size-28">
+                <AvatarImage src={avatarUrl} alt={`${displayName} profile photo`} className="object-cover" />
+                <AvatarFallback className="bg-gradient-ember text-2xl font-black text-primary-foreground">{initials || "F"}</AvatarFallback>
+              </Avatar>
+              <Button
+                type="button"
+                size="icon"
+                className="absolute bottom-0 right-0 size-9 rounded-full border-2 border-card shadow-card"
+                aria-label="Change profile photo"
+                title="Change profile photo"
+                disabled={photoBusy}
+                onClick={() => fileInputRef.current?.click()}
+              >
+                {photoBusy ? <Loader2 className="animate-spin" aria-hidden="true" /> : <Camera aria-hidden="true" />}
+              </Button>
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept="image/jpeg,image/png,image/webp"
+                className="sr-only"
+                onChange={(event) => void handlePhotoChange(event.target.files?.[0])}
+              />
+            </div>
+            <div className="min-w-0 flex-1 pb-1">
+              <h1 className="truncate font-display text-2xl font-black sm:text-3xl">{displayName}</h1>
+              <p className="mt-1 truncate text-sm text-muted-foreground">
+                {profile?.phone ? formatPhone(profile.phone) : "Phone not added"}
+              </p>
+              <p className="truncate text-sm text-muted-foreground">{profile?.email || "Email not added"}</p>
+            </div>
+          </div>
 
-      <form
-        onSubmit={handleSave}
-        className="mt-6 space-y-4 rounded-2xl border border-border/70 bg-card p-5 shadow-card sm:p-6"
-      >
-        <h2 className="font-display text-lg font-extrabold">Profile</h2>
+          <Button className="mt-4 w-full sm:w-auto" onClick={() => setEditing((open) => !open)} aria-expanded={editing}>
+            <Pencil aria-hidden="true" /> {editing ? "Close profile settings" : "View & Edit Profile"}
+          </Button>
+        </div>
+      </section>
+
+      {editing ? <section className="mt-4 rounded-lg border border-border bg-card p-5 shadow-card sm:p-6">
+        <form onSubmit={handleSave} className="space-y-4">
+          <h2 className="font-display text-lg font-extrabold">Profile settings</h2>
 
         <div className="space-y-2">
           <Label htmlFor="fullName">Full name</Label>
@@ -248,10 +380,16 @@ function AccountPage() {
           {saving && <Loader2 className="animate-spin" aria-hidden="true" />}
           {saving ? "Saving..." : "Save changes"}
         </Button>
-      </form>
 
-      {pendingPhone && (
-        <div className="mt-4 rounded-2xl border border-border/70 bg-card p-5 shadow-card sm:p-6">
+          <div className="border-t border-border pt-4">
+            <Button asChild variant="ghost" className="px-0 text-muted-foreground hover:text-foreground">
+              <Link to="/forgot-password"><LockKeyhole aria-hidden="true" /> Change password</Link>
+            </Button>
+          </div>
+        </form>
+
+        {pendingPhone && (
+        <div className="mt-5 border-t border-border pt-5">
           <h2 className="flex items-center gap-2 font-display text-lg font-extrabold">
             <ShieldCheck className="size-5 text-primary" aria-hidden="true" /> Verify new number
           </h2>
@@ -317,7 +455,50 @@ function AccountPage() {
             </div>
           </form>
         </div>
-      )}
+        )}
+      </section> : null}
+
+      <p className="mx-auto my-6 flex max-w-sm items-center justify-center gap-2 text-center font-display text-lg font-bold text-foreground sm:text-xl">
+        <Sparkles className="size-5 shrink-0 text-primary" aria-hidden="true" />
+        The Good Food Brings People Together
+      </p>
+
+      <Link
+        to="/account/rewards"
+        className="group flex items-center gap-3 rounded-lg border border-primary/30 bg-gradient-ember p-4 text-primary-foreground shadow-ember transition-smooth hover:brightness-105"
+      >
+        <span className="grid size-11 shrink-0 place-items-center rounded-full bg-background/15"><Crown className="size-6" aria-hidden="true" /></span>
+        <span className="min-w-0 flex-1">
+          <span className="block font-display text-lg font-extrabold">Flamio Rewards</span>
+          <span className="block text-xs opacity-80">Order more, earn more</span>
+        </span>
+        <span className="flex shrink-0 items-center gap-1.5 border-l border-primary-foreground/25 pl-3">
+          <Coins className="size-4" aria-hidden="true" />
+          <span className="font-display text-lg font-black">{rewards.data?.balance ?? 0}</span>
+        </span>
+        <ChevronRight className="size-5 shrink-0 transition-transform group-hover:translate-x-0.5" aria-hidden="true" />
+      </Link>
+
+      <section className="mt-7">
+        <h2 className="font-display text-2xl font-black">My Orders &amp; Services</h2>
+        <p className="mt-1 text-sm text-muted-foreground">Everything you need, all in one place.</p>
+        <div className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-3">
+          {services.map(({ to, title, description, icon: Icon }) => (
+            <Link key={to} to={to} className="group flex min-h-36 flex-col rounded-lg border border-border bg-card p-4 shadow-card transition-smooth hover:border-primary/50 hover:bg-accent">
+              <Icon className="size-7 text-primary" strokeWidth={1.7} aria-hidden="true" />
+              <span className="mt-5 flex items-center justify-between gap-2 font-display font-bold">
+                {title}<ChevronRight className="size-4 shrink-0 text-primary transition-transform group-hover:translate-x-0.5" aria-hidden="true" />
+              </span>
+              <span className="mt-1 text-xs text-muted-foreground">{description}</span>
+            </Link>
+          ))}
+        </div>
+      </section>
+
+      <Button variant="outline" size="lg" className="mt-7 w-full justify-between" onClick={handleSignOut}>
+        <span className="flex items-center gap-2"><LogOut aria-hidden="true" /> Log out</span>
+        <ChevronRight aria-hidden="true" />
+      </Button>
     </div>
   );
 }

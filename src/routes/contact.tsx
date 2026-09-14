@@ -1,7 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
-import { MapPin } from "lucide-react";
+import { Clock3, ExternalLink, Facebook, Instagram, Mail, MapPin, Phone } from "lucide-react";
 
 import { restaurant } from "@/data/restaurant";
 import { getPublicRestaurantInfo } from "@/lib/restaurant.functions";
@@ -13,13 +13,15 @@ export const Route = createFileRoute("/contact")({
       {
         name: "description",
         content:
-          "Find Flamio at Kishoreganj Sadar, Gurudayal College. Location and opening hours for our flame-grilled kitchen.",
+          "Flamio location, opening hours, and contact information in Kishoreganj Sadar.",
       },
       { property: "og:title", content: "Contact Flamio — Kishoreganj Sadar" },
       {
         property: "og:description",
-        content: "Find Flamio at Kishoreganj Sadar, Gurudayal College, Bangladesh.",
+        content: "Flamio location, opening hours, and contact information.",
       },
+      { property: "og:type", content: "website" },
+      { name: "twitter:card", content: "summary" },
     ],
   }),
   component: ContactPage,
@@ -45,88 +47,54 @@ function ContactPage() {
   const hoursText = info?.opensAt && info?.closesAt ? `${info.opensAt} – ${info.closesAt}` : null;
 
   return (
-    <div className="mx-auto w-full max-w-3xl px-4 py-10 sm:px-6 sm:py-16">
+    <div className="mx-auto w-full max-w-2xl px-4 py-8 pb-28 sm:px-6 sm:py-12">
       <h1 className="font-display text-3xl font-black sm:text-4xl">Contact</h1>
-      <p className="mt-3 text-muted-foreground">{restaurant.about}</p>
-
-      <section className="mt-8 rounded-2xl border border-border/70 bg-card p-6 shadow-card">
-        <h2 className="font-display text-xl font-extrabold">Where to find us</h2>
-        <p className="mt-3 flex items-start gap-2 text-muted-foreground">
-          <MapPin aria-hidden="true" className="mt-0.5 size-5 text-primary" />
-          <span>
-            {addressLine}
-            <br />
-            {city}, {country}
+      <div className="mt-6 divide-y divide-border overflow-hidden rounded-lg border border-border bg-card shadow-card">
+        <section className="flex gap-4 p-5">
+          <span className="grid size-10 shrink-0 place-items-center rounded-full bg-primary/10 text-primary">
+            <MapPin aria-hidden="true" className="size-5" />
           </span>
-        </p>
-        {googleMapsUrl ? (
-          <a
-            href={googleMapsUrl}
-            target="_blank"
-            rel="noreferrer"
-            className="mt-3 inline-block text-sm font-medium text-primary underline-offset-4 hover:underline"
-          >
-            Open in Google Maps
-          </a>
-        ) : null}
-      </section>
-
-      <section className="mt-6 rounded-2xl border border-border/70 bg-card p-6 shadow-card">
-        <h2 className="font-display text-xl font-extrabold">Phone &amp; social</h2>
-        <ul className="mt-3 space-y-2 text-sm text-muted-foreground">
-          <li>Phone: {phone ?? "Not added yet"}</li>
-          <li>Email: {email ?? "Not added yet"}</li>
-          <li>
-            Facebook:{" "}
-            {facebookUrl ? (
-              <a
-                href={facebookUrl}
-                target="_blank"
-                rel="noreferrer"
-                className="text-primary underline-offset-4 hover:underline"
-              >
-                Visit our page
+          <div className="min-w-0 flex-1">
+            <h2 className="font-display text-lg font-bold">Location</h2>
+            <p className="mt-1 text-sm text-muted-foreground">
+              {addressLine}<br />{city}, {country}
+            </p>
+            {googleMapsUrl ? (
+              <a href={googleMapsUrl} target="_blank" rel="noreferrer" className="mt-2 inline-flex items-center gap-1 text-sm font-semibold text-primary hover:underline">
+                Open map <ExternalLink aria-hidden="true" className="size-3.5" />
               </a>
-            ) : (
-              "Not added yet"
-            )}
-          </li>
-          <li>
-            Instagram:{" "}
-            {instagramUrl ? (
-              <a
-                href={instagramUrl}
-                target="_blank"
-                rel="noreferrer"
-                className="text-primary underline-offset-4 hover:underline"
-              >
-                Follow us
-              </a>
-            ) : (
-              "Not added yet"
-            )}
-          </li>
-        </ul>
-      </section>
-
-      <section className="mt-6 rounded-2xl border border-border/70 bg-card p-6 shadow-card">
-        <h2 className="font-display text-xl font-extrabold">Opening hours</h2>
-        {hoursText ? (
-          <div className="mt-3 space-y-1.5 text-sm">
-            <div className="flex justify-between">
-              <span className="text-muted-foreground">Every day</span>
-              <span>{hoursText}</span>
-            </div>
-            {info && !info.isOpen ? (
-              <p className="text-sm text-muted-foreground">
-                We&apos;re not taking orders right now.
-              </p>
             ) : null}
           </div>
-        ) : (
-          <p className="mt-3 text-sm text-muted-foreground">Opening hours not added yet.</p>
-        )}
-      </section>
+        </section>
+
+        <section className="flex gap-4 p-5">
+          <span className="grid size-10 shrink-0 place-items-center rounded-full bg-primary/10 text-primary">
+            <Clock3 aria-hidden="true" className="size-5" />
+          </span>
+          <div className="min-w-0 flex-1">
+            <h2 className="font-display text-lg font-bold">Opening hours</h2>
+            <p className="mt-1 text-sm text-muted-foreground">
+              {hoursText ? `Every day · ${hoursText}` : "Opening hours not added yet"}
+            </p>
+            {info && !info.isOpen ? <p className="mt-1 text-sm font-medium text-primary">Currently not taking orders</p> : null}
+          </div>
+        </section>
+
+        <section className="flex gap-4 p-5">
+          <span className="grid size-10 shrink-0 place-items-center rounded-full bg-primary/10 text-primary">
+            <Phone aria-hidden="true" className="size-5" />
+          </span>
+          <div className="min-w-0 flex-1">
+            <h2 className="font-display text-lg font-bold">Call &amp; contact</h2>
+            <div className="mt-2 flex flex-wrap gap-x-4 gap-y-2 text-sm">
+              {phone ? <a href={`tel:${phone}`} className="font-semibold text-primary hover:underline">{phone}</a> : <span className="text-muted-foreground">Phone not added yet</span>}
+              {email ? <a href={`mailto:${email}`} className="inline-flex items-center gap-1.5 text-muted-foreground hover:text-foreground"><Mail aria-hidden="true" className="size-4" />{email}</a> : null}
+              {facebookUrl ? <a href={facebookUrl} target="_blank" rel="noreferrer" aria-label="Flamio on Facebook" className="text-muted-foreground hover:text-primary"><Facebook aria-hidden="true" className="size-4" /></a> : null}
+              {instagramUrl ? <a href={instagramUrl} target="_blank" rel="noreferrer" aria-label="Flamio on Instagram" className="text-muted-foreground hover:text-primary"><Instagram aria-hidden="true" className="size-4" /></a> : null}
+            </div>
+          </div>
+        </section>
+      </div>
     </div>
   );
 }

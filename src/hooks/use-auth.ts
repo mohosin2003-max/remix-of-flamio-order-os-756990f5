@@ -8,6 +8,8 @@ export type CustomerProfile = {
   fullName: string | null;
   phone: string | null;
   email: string | null;
+  avatarPath: string | null;
+  avatarUrl: string | null;
 };
 
 /**
@@ -52,15 +54,39 @@ export function useAuth() {
     let active = true;
     void supabase
       .from("profiles")
-      .select("id, full_name, phone, email")
+      .select("id, full_name, phone, email, avatar_path")
       .eq("id", user.id)
       .maybeSingle()
-      .then(({ data }) => {
+      .then(async ({ data }) => {
         if (!active) return;
+
+        let avatarUrl: string | null = null;
+        if (data?.avatar_path) {
+          const { data: signed } = await supabase.storage
+            .from("profile-photos")
+            .createSignedUrl(data.avatar_path, 60 * 60);
+          if (!active) return;
+          avatarUrl = signed?.signedUrl ?? null;
+        }
+
         setProfile(
           data
-            ? { id: data.id, fullName: data.full_name, phone: data.phone, email: data.email }
-            : { id: user.id, fullName: null, phone: null, email: null },
+            ? {
+                id: data.id,
+                fullName: data.full_name,
+                phone: data.phone,
+                email: data.email,
+                avatarPath: data.avatar_path,
+                avatarUrl,
+              }
+            : {
+                id: user.id,
+                fullName: null,
+                phone: null,
+                email: null,
+                avatarPath: null,
+                avatarUrl: null,
+              },
         );
       });
     return () => {
